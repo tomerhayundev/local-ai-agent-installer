@@ -1,0 +1,37 @@
+# Publishes one zip per system when the private repo's CI pushes a v<version> tag (over its deploy key).
+# The tree it zips: windows/, macos/ and linux/ (each system's scripts, executable bits kept by git), plus LICENSE,
+# THIRD_PARTY_NOTICES and README.txt in every zip, and NOTES.md as the release notes.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Zip each system
+        run: |
+          set -eu
+          mkdir dist
+          for os in windows macos linux; do
+            (cd "$os" && zip -X -r "../dist/install-$os.zip" .)
+            zip -X -j "dist/install-$os.zip" LICENSE THIRD_PARTY_NOTICES README.txt
+          done
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$TAG" --notes-file NOTES.md
+          gh release upload "$TAG" dist/*.zip --clobber
