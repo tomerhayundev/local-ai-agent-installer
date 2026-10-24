@@ -294,7 +294,28 @@ prepare_docker() {
     check_compose
 }
 
-# ---- This computer's facts (the twelve names of the front-end contract) --------------------------------------------
+# ---- This computer's facts (the thirteen names of the front-end contract) ------------------------------------------
+
+# This computer's own DNS servers, separated by spaces, for a Tailscale agent's sidecar to ask after the tailnet's
+# resolver: resolvectl's Current DNS Server, else the nameserver lines of systemd-resolved's real list or of
+# /etc/resolv.conf, never a 127.x stub. The step keeps only IPv4 addresses that a container can ask (installer.facts).
+host_dns() {
+    servers=""
+    if command -v resolvectl >/dev/null 2>&1; then
+        servers=$(resolvectl status 2>/dev/null | awk '/Current DNS Server:/ { print $NF }')
+    fi
+    if [ -z "$servers" ]; then
+        for file in /run/systemd/resolve/resolv.conf /etc/resolv.conf; do
+            if [ -r "$file" ]; then
+                servers=$(awk '$1 == "nameserver" && $2 !~ /^127\./ { print $2 }' "$file")
+            fi
+            if [ -n "$servers" ]; then
+                break
+            fi
+        done
+    fi
+    printf '%s\n' "$servers" | awk 'NF && !seen[$1]++ { print $1 }' | head -n 6 | tr '\n' ' '
+}
 
 gather_facts() {
     HOST_HOME="$AGENTS_HOME"
@@ -315,6 +336,9 @@ gather_facts() {
         if [ -n "$interface" ]; then
             HOST_LAN=$(ipconfig getifaddr "$interface" 2>/dev/null)
         fi
+        # Not on Docker Desktop: its own DNS stands between the containers and this computer, and a router's address
+        # may not answer from there. The installer says what that leaves out.
+        HOST_DNS=""
     else
         HOST_NAME=$(hostname)
         HOST_TZ=$(timedatectl show -p Timezone --value 2>/dev/null)
@@ -326,6 +350,7 @@ gather_facts() {
         HOST_LANG=${HOST_LANG%%_*}
         HOST_LAN=$(ip -4 route get 1.1.1.1 2>/dev/null |
             awk '{ for (i = 1; i < NF; i++) if ($i == "src") { print $(i + 1); exit } }')
+        HOST_DNS=$(host_dns)
         # Ruling 16: on Linux every step, the keeper and the agent run as this user, with the socket's group.
         HOST_UID=$(id -u)
         HOST_GID=$(id -g "$USER_NAME")
@@ -334,7 +359,7 @@ gather_facts() {
         AGENT_USER="$KEEPER_USER"
     fi
     export HOST_HOME HOST_PLATFORM HOST_NAME HOST_TZ HOST_LANG HOST_LAN HOST_UID HOST_GID DOCKER_GID PACKAGE \
-        KEEPER_USER AGENT_USER
+        KEEPER_USER AGENT_USER HOST_DNS
 }
 
 # ---- The package ----------------------------------------------------------------------------------------------------
@@ -391,6 +416,201 @@ one_installer() {
     esac
 }
 
+# ---- The phone line's host part (HOST phone-line, Linux) ------------------------------------------------------------
+# A step asks for it with a `HOST phone-line` line (a new phone agent, or the menu's phone line). It is what a container
+# can't do on this computer: the packages, Bluetooth, oFono and PipeWire, and pairing the phone. phone-line.sh does it
+# (it sits next to this script, with phone-line-pair.py), with sudo. It asks phone-line.sh first what is done already
+# and does only what is missing, so a second phone agent, or a run again, sets nothing up and pairs nothing twice. The
+# phone's address goes to <home>/phone-line/paired_phone, for the step that follows, and the line's AppArmor profile, when
+# this computer has it loaded, to <home>/phone-line/apparmor_profile. A test call is made only when the computer's
+# owner types yes and then a number, and is offered only when this run set something up or paired the phone.
+
+PHONE_PAIRED=phone-line/paired_phone
+PHONE_APPARMOR=phone-line/apparmor_profile
+LINE_PROFILE=local-ai-agent-phone-line
+ADDRESS_RE='[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]:[0-9A-F][0-9A-F]'
+
+# phone-line.sh's `status` (setup ready/needed, paired <address>, modem <address>), kept in $WORK/phone-status.
+phone_status() {
+    as_root bash "$LINE_SCRIPT" status > "$WORK/phone-status" \
+        || stop "phone-line.sh couldn't look at this computer (above is why). Fix that, then run the installer again."
+}
+
+phone_has() {
+    grep -qx "$1" "$WORK/phone-status"
+}
+
+# Addresses read from stdin, in capitals, one a line; anything that is not an address is dropped.
+phone_addresses() {
+    tr 'abcdef' 'ABCDEF' | grep -x "$ADDRESS_RE"
+}
+
+# The addresses of one kind of `status` line (paired, modem).
+phone_list() {
+    sed -n "s/^$1 //p" "$WORK/phone-status" | phone_addresses
+}
+
+phone_count() {
+    if [ -z "$1" ]; then
+        echo 0
+    else
+        printf '%s\n' "$1" | grep -c .
+    fi
+}
+
+# The phone's address, for the step that follows: written as soon as it is known.
+phone_save() {
+    make_folder "$AGENTS_HOME/phone-line" || stop "The phone line's folder could not be made in $AGENTS_HOME."
+    printf '%s\n' "$1" > "$AGENTS_HOME/$PHONE_PAIRED" || stop "The phone's address could not be saved."
+    own_group "$AGENTS_HOME/$PHONE_PAIRED"
+}
+
+# The line's AppArmor profile, for the step that writes the line's compose: its name when phone-line.sh's status says
+# it is loaded here (a computer with AppArmor, set up), and no file otherwise (no AppArmor: Docker applies no profile,
+# and the compose names none). Written again on every run, so a computer that changed is followed.
+phone_apparmor() {
+    make_folder "$AGENTS_HOME/phone-line" || stop "The phone line's folder could not be made in $AGENTS_HOME."
+    if phone_has "apparmor $LINE_PROFILE"; then
+        printf '%s\n' "$LINE_PROFILE" > "$AGENTS_HOME/$PHONE_APPARMOR" \
+            || stop "The phone line's AppArmor setting could not be saved."
+        own_group "$AGENTS_HOME/$PHONE_APPARMOR"
+    else
+        rm -f "$AGENTS_HOME/$PHONE_APPARMOR" || stop "The phone line's old AppArmor setting could not be removed."
+    fi
+}
+
+# Prints the number as the line would call it (+972 made a leading 0), or nothing: only an Israeli landline (0 and
+# 2, 3, 4, 8 or 9, then 7 digits) or mobile (05 or 07, then 8 digits), as the line's own destination rule allows. So no
+# emergency, short, premium-rate or international number. Spaces, dashes, dots and brackets are left out first.
+phone_number() {
+    raw=$(printf '%s' "$1" | tr -d ' ().-')
+    case "$raw" in
+        +972*) raw=${raw#+972}; raw="0${raw#0}" ;;
+        +*) return 0 ;;
+    esac
+    case "$raw" in
+        0[23489][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) printf '%s\n' "$raw" ;;
+        0[57][0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]) printf '%s\n' "$raw" ;;
+    esac
+}
+
+# Never by default: only a typed yes, then a number typed at that moment. Nothing of it is kept.
+phone_test_call() {
+    say ""
+    say "Try the line with a test call to your own phone? It has no AI: it rings you, plays a tone and listens"
+    say "for 5 seconds. Type yes for it; Enter skips it."
+    answer=""
+    read -r answer || true
+    case "$answer" in
+        [Yy]|[Yy][Ee][Ss]) ;;
+        *) say "No test call."; return 0 ;;
+    esac
+    while :; do
+        say "Your own phone number (not the line's phone), or Enter for no call:"
+        typed=""
+        if ! read -r typed && [ -z "$typed" ]; then
+            say "No test call."
+            return 0
+        fi
+        if [ -z "$typed" ]; then
+            say "No test call."
+            return 0
+        fi
+        number=$(phone_number "$typed")
+        if [ -n "$number" ]; then
+            break
+        fi
+        say "Only an Israeli number can be called: a landline of 9 digits or a mobile of 10 (no emergency, short,"
+        say "premium-rate or international numbers). Type it again."
+    done
+    as_root bash "$LINE_SCRIPT" test-call "$number" \
+        || say "The test call didn't pass (above is why). The installer goes on; the line's state comes at the end."
+}
+
+phone_host() {
+    if [ "$OS" != linux ]; then
+        stop "The phone line works only on Linux for now."
+    fi
+    LINE_SCRIPT="$SCRIPT_DIR/phone-line.sh"
+    if [ ! -f "$LINE_SCRIPT" ] || [ ! -f "$SCRIPT_DIR/phone-line-pair.py" ]; then
+        stop "phone-line.sh and phone-line-pair.py belong next to install-agent.sh (they come in install-linux.zip)." \
+             "Put them back, then run the installer again."
+    fi
+    say ""
+    say "The phone line's part on this computer: Bluetooth, oFono, PipeWire, and pairing the phone."
+    say "It runs phone-line.sh with sudo (sudo may ask for your password)."
+    phone_status
+    fresh=""
+    if phone_has "setup ready"; then
+        say "This computer is set up for the phone line already."
+    else
+        as_root bash "$LINE_SCRIPT" setup --installer \
+            || stop "The phone line's setup didn't finish (above is why). Run the installer again once that is fixed."
+        phone_status
+        phone_has "setup ready" \
+            || stop "The setup ran, but this computer still isn't ready for the phone line (above is what failed)." \
+                    "Run the installer again once that is fixed."
+        fresh=1
+    fi
+    phone_apparmor
+    # The phone this installer saved before, or the one a line set up earlier (by hand, say) has in its line.env.
+    known=$(head -n 1 "$AGENTS_HOME/$PHONE_PAIRED" 2>/dev/null | phone_addresses)
+    if [ -z "$known" ]; then
+        known=$(sed -n 's/^PHONE_ADDRESS=//p' "$AGENTS_HOME/phone-line/line.env" 2>/dev/null | tail -n 1 \
+            | phone_addresses)
+    fi
+    paired=$(phone_list paired)
+    modems=$(phone_list modem)
+    address=""
+    if [ -n "$known" ] && printf '%s\n' "$paired" | grep -qx "$known"; then
+        address=$known
+        say "The phone $address is paired already."
+    elif [ -z "$known" ] && [ "$(phone_count "$modems")" = 1 ]; then
+        address=$modems
+        say "A phone is paired and connected already: $address"
+    elif [ -z "$known" ] && [ -z "$modems" ] && [ "$(phone_count "$paired")" = 1 ]; then
+        address=$paired
+        say "A phone is paired already: $address"
+    fi
+    if [ -z "$address" ]; then
+        say ""
+        say "Now pair the phone: keep it next to this computer, with its Bluetooth on."
+        say "The phone and this screen show the same 6-digit code: check it, then type yes here."
+        as_root bash "$LINE_SCRIPT" pair --installer \
+            || stop "No phone was paired. Run the installer again to try once more."
+        fresh=1
+        # The phone is the one device paired now that wasn't before. It is saved at once, so a run again that can't
+        # reach it yet does not pair it a second time.
+        phone_status
+        if [ -n "$paired" ]; then
+            printf '%s\n' "$paired" > "$WORK/paired-before"
+            new=$(phone_list paired | grep -vxF -f "$WORK/paired-before")
+        else
+            new=$(phone_list paired)
+        fi
+        if [ "$(phone_count "$new")" != 1 ]; then
+            stop "The phone paired, but this computer can't tell which device it is. Remove the phones you don't" \
+                 "want in Bluetooth's settings (bluetoothctl remove <address>), then run the installer again."
+        fi
+        address=$new
+        phone_save "$address"
+    fi
+    say "Checking that this computer reaches the phone (up to 30 seconds)..."
+    checked=$(as_root bash "$LINE_SCRIPT" check "$address" 2>/dev/null | sed -n 's/^ok \([^ ]*\).*/\1/p' \
+        | phone_addresses | head -n 1)
+    if [ "$checked" = "$address" ]; then
+        say "This computer reaches the phone ($address)."
+    else
+        checked=""
+        say "The phone $address isn't in reach right now (is it near, with Bluetooth on?)."
+        say "The line reaches it when it is."
+    fi
+    phone_save "$address"
+    if [ -n "$fresh" ] && [ -n "$checked" ]; then
+        phone_test_call
+    fi
+}
+
 # ---- The steps ------------------------------------------------------------------------------------------------------
 
 open_link() {
@@ -411,12 +631,15 @@ open_link() {
     fi
 }
 
-# Shows the step's lines as they come, opens OPEN links at once, and keeps UP, NEXT and PROBE for after the step.
+# Shows the step's lines as they come, opens OPEN links at once, and keeps UP, NEXT, HOST and PROBE for after the step.
 read_lines() {
     while IFS= read -r line || [ -n "$line" ]; do
         case "$line" in
             "OPEN "*) open_link "${line#OPEN }" ;;
-            "UP "*|"NEXT "*|"PROBE "*) printf '%s\n' "$line" >> "$1" ;;
+            "UP "*|"NEXT "*|"HOST "*|"PROBE "*) printf '%s\n' "$line" >> "$1" ;;
+            # A secret is asked next (a key): what is typed is not shown until SHOW.
+            HIDE) stty -echo < /dev/tty 2>/dev/null ;;
+            SHOW) stty echo < /dev/tty 2>/dev/null ;;
             *) printf '%s\n' "$line" ;;
         esac
     done
@@ -432,8 +655,13 @@ run_step() {
         network_args="--network $NETWORK"
     fi
     group_args=""
+    pipewire_args=""
     if [ "$OS" = linux ]; then
         group_args="--group-add $DOCKER_GID"
+        # The phone line step checks that this user's PipeWire runs: its socket, when there is one, is shown to it.
+        if [ -S "/run/user/$(id -u)/pipewire-0" ]; then
+            pipewire_args="-v /run/user/$(id -u)/pipewire-0:/host-pipewire-0:ro"
+        fi
     fi
     : > "$ACTIONS"
     one_installer
@@ -444,12 +672,13 @@ run_step() {
     {
         docker run --rm -i --name agent-installer \
             -v "$AGENTS_HOME:/agents-home" -v /var/run/docker.sock:/var/run/docker.sock \
-            $network_args --user "$user" $group_args \
+            $network_args $pipewire_args --user "$user" $group_args \
             -e HOST_HOME -e HOST_PLATFORM -e HOST_NAME -e HOST_TZ -e HOST_LANG -e HOST_LAN \
-            -e HOST_UID -e HOST_GID -e DOCKER_GID -e PACKAGE -e KEEPER_USER -e AGENT_USER \
+            -e HOST_UID -e HOST_GID -e DOCKER_GID -e PACKAGE -e KEEPER_USER -e AGENT_USER -e HOST_DNS \
             "$IMAGE" python -u install.py "$@" 2>&1
         echo "$?" > "$status"
     } | read_lines "$ACTIONS"
+    stty echo < /dev/tty 2>/dev/null || true       # a step cut off while it hid what is typed
     STEP_CODE=$(cat "$status" 2>/dev/null)
     rm -f "$status"
 }
@@ -493,6 +722,14 @@ start_compose() {
     docker compose -f "$AGENTS_HOME/$1" up -d < /dev/null || stop "Docker could not start $1."
 }
 
+# What a step asked to be done on this computer itself (HOST <action>): only the actions known here.
+run_host() {
+    case "$1" in
+        phone-line) phone_host ;;
+        *) stop "A step asked for an unexpected host action." ;;
+    esac
+}
+
 run_steps() {
     next="start"
     while [ -n "$next" ]; do
@@ -506,6 +743,11 @@ run_steps() {
         if [ "$STEP_CODE" != 0 ]; then
             step_stopped
         fi
+        # The host part first (it may ask the owner, so the list is on descriptor 3), then the UP lines, then NEXT.
+        sed -n 's/^HOST //p' "$ACTIONS" > "$WORK/hosts"
+        while IFS= read -r action <&3; do
+            run_host "$action"
+        done 3< "$WORK/hosts"
         sed -n 's/^UP //p' "$ACTIONS" > "$WORK/ups"
         # The list on descriptor 3, so a stop inside still reads its Enter from the owner.
         while IFS= read -r path <&3; do
@@ -525,7 +767,9 @@ main() {
     make_home
     WORK=$(mktemp -d "${TMPDIR:-/tmp}/install-agent.XXXXXX") || stop "No room for the installer's notes."
     ACTIONS="$WORK/actions"
-    trap 'rm -rf "$WORK"' EXIT
+    # Typed text is shown again however this ends (a Ctrl+C at a hidden prompt included).
+    trap 'stty echo < /dev/tty 2>/dev/null; rm -rf "$WORK"' EXIT
+    trap 'exit 130' INT TERM HUP
     pull_image
     if [ "$OS" = macos ]; then
         run_probe

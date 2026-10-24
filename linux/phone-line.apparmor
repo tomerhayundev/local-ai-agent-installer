@@ -1,0 +1,137 @@
+# The phone line container's AppArmor profile, local-ai-agent-phone-line. phone-line.sh setup installs it as
+# /etc/apparmor.d/local-ai-agent-phone-line and loads it (apparmor_parser -r) on a computer with AppArmor; the line's
+# compose names it (security_opt: apparmor=local-ai-agent-phone-line). Edits here are replaced on the next setup.
+#
+# Why its own profile: on a computer with AppArmor, Docker puts every container under its docker-default profile, and
+# on Ubuntu that profile denies every D-Bus call (the kernel log shows apparmor="DENIED"
+# operation="dbus_method_call" ... label="docker-default"). The line drives the phone through BlueZ and oFono on the
+# host's system D-Bus, so it needs some. Agent containers keep docker-default.
+#
+# What it is: docker-default's rules, as Moby generates them (github.com/moby/profiles, apparmor/template.go, the
+# baseTemplate, with Abi abi/3.0, tunables/global, abstractions/base and the daemon profile unconfined, as Docker fills
+# them in on Ubuntu), then only the D-Bus messages the line's own code exchanges (app/phone_line/line.py, with
+# dbus_fast's low-level bus: Hello on connect, then only what line.py sends). Nothing else is added.
+
+abi <abi/3.0>,
+#include <tunables/global>
+
+profile local-ai-agent-phone-line flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+
+  # ---- docker-default (Moby's baseTemplate) ----
+  network,
+  # Disallow obsolete socket families removed from the Linux kernel.
+  # AF_DECnet has no AppArmor family name, so it cannot be denied here.
+  deny network ax25,
+  deny network ipx,
+  deny network appletalk,
+  deny network netrom,
+  deny network rose,
+  deny network econet,
+  deny network atmsvc,
+  deny network irda,
+  deny network wanpipe,
+  deny network isdn,
+  deny network caif,
+  # Disallow AF_ALG (Linux kernel crypto API).
+  deny network alg,
+  # Disallow AF_VSOCK to prevent host/guest communication.
+  deny network vsock,
+  capability,
+  file,
+  umount,
+  # Host (privileged) processes may send signals to container processes.
+  signal (receive) peer=unconfined,
+  # runc may send signals to container processes (for "docker stop").
+  signal (receive) peer=runc,
+  # crun may send signals to container processes (for "docker stop" when used with crun OCI runtime).
+  signal (receive) peer=crun,
+  # dockerd may send signals to container processes (for "docker kill"); Docker's own daemon profile is unconfined,
+  # the rule above.
+  # Container processes may send signals amongst themselves.
+  signal (send,receive) peer=local-ai-agent-phone-line,
+
+  deny @{PROC}/* w,   # deny write for all files directly in /proc (not in a subdir)
+  # deny write to files not in /proc/<number>/** or /proc/sys/**
+  deny @{PROC}/{[^1-9/],[^1-9/][^0-9/],[^1-9s/][^0-9y/][^0-9s/],[^1-9/][^0-9/][^0-9/][^0-9/]*}/** w,
+  deny @{PROC}/sys/[^k]** w,  # deny /proc/sys except /proc/sys/k* (effectively /proc/sys/kernel)
+  deny @{PROC}/sys/kernel/{?,??,[^s][^h][^m]**} w,  # deny everything except shm* in /proc/sys/kernel/
+  deny @{PROC}/sysrq-trigger rwklx,
+  deny @{PROC}/kcore rwklx,
+
+  deny mount,
+
+  deny /sys/[^f]*/** wklx,
+  deny /sys/f[^s]*/** wklx,
+  deny /sys/fs/[^c]*/** wklx,
+  deny /sys/fs/c[^g]*/** wklx,
+  deny /sys/fs/cg[^r]*/** wklx,
+  deny /sys/firmware/** rwklx,
+  deny /sys/devices/virtual/powercap/** rwklx,
+  deny /sys/kernel/security/** rwklx,
+
+  # allow processes within the container to trace each other,
+  # provided all other LSM and yama setting allow it.
+  ptrace (trace,tracedby,read,readby) peer=local-ai-agent-phone-line,
+
+  # ---- the phone line's own ----
+  # The owner's PipeWire socket, bound in at the same path (the call's audio: pw-cli, pw-record, pw-play). `file,`
+  # above allows it already; it is named here so the profile says what the line opens. The system bus socket
+  # (/run/dbus/system_bus_socket) is the same: a file `file,` allows; what goes over it is the D-Bus rules below.
+  /run/user/[0-9]*/pipewire-0 rw,
+
+  # D-Bus, the system bus only. A send is checked against the name the message is addressed to (line.py addresses
+  # each by its well-known name), so each send rule names its peer. Replies to these calls come back as their replies.
+  # The bus itself: Hello (dbus_fast, on connect), AddMatch (for the DisconnectReason signal below) and NameHasOwner
+  # (whether oFono is on the bus).
+  dbus (send)
+       bus=system
+       path=/org/freedesktop/DBus
+       interface=org.freedesktop.DBus
+       member={Hello,AddMatch,NameHasOwner}
+       peer=(name=org.freedesktop.DBus),
+
+  # BlueZ: connecting the phone (Connect), letting its hands-free profile go (DisconnectProfile) and a full
+  # Disconnect, on the phone's device on the first adapter, the one line.py uses.
+  dbus (send)
+       bus=system
+       path=/org/bluez/hci0/dev_*
+       interface=org.bluez.Device1
+       member={Connect,Disconnect,DisconnectProfile}
+       peer=(name=org.bluez),
+
+  # oFono: the modems (GetModems), the phone's calls (GetCalls), placing one (Dial) and hanging every call up
+  # (HangupAll) on the phone's hands-free modem, and a call's state (GetProperties) and hanging it up (Hangup).
+  dbus (send)
+       bus=system
+       path=/
+       interface=org.ofono.Manager
+       member=GetModems
+       peer=(name=org.ofono),
+  dbus (send)
+       bus=system
+       path=/hfp/org/bluez/hci0/dev_*
+       interface=org.ofono.VoiceCallManager
+       member={GetCalls,Dial,HangupAll}
+       peer=(name=org.ofono),
+  dbus (send)
+       bus=system
+       path=/hfp/org/bluez/hci0/dev_*/voicecall*
+       interface=org.ofono.VoiceCall
+       member={GetProperties,Hangup}
+       peer=(name=org.ofono),
+
+  # Signals in. A signal's sender is checked by its unique name (:1.N), never its well-known one, so these rules hold
+  # to the path, interface and member instead: only the signal line.py subscribes to (its AddMatch), oFono's
+  # DisconnectReason on a call, and NameAcquired, which the bus sends every client after Hello.
+  dbus (receive)
+       bus=system
+       path=/hfp/org/bluez/hci0/dev_*/voicecall*
+       interface=org.ofono.VoiceCall
+       member=DisconnectReason,
+  dbus (receive)
+       bus=system
+       path=/org/freedesktop/DBus
+       interface=org.freedesktop.DBus
+       member=NameAcquired,
+}

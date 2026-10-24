@@ -373,7 +373,7 @@ function Test-Compose {
         'then run this installer again.')
 }
 
-# ---- This computer's facts (the twelve names of the front-end contract) --------------------------------------------
+# ---- This computer's facts (the thirteen names of the front-end contract) ------------------------------------------
 
 function Get-HomeAddress {
     try {
@@ -394,6 +394,9 @@ function Get-Facts {
     $env:HOST_TZ = (Get-TimeZone).Id
     $env:HOST_LANG = (Get-Culture).TwoLetterISOLanguageName
     $env:HOST_LAN = Get-HomeAddress
+    # This computer's DNS servers are not passed on Docker Desktop: its own DNS stands between the containers and this
+    # computer, and a router's address may not answer from there. The installer says what that leaves out.
+    $env:HOST_DNS = ''
     # Not on Docker Desktop: an empty value unsets the name, and `docker run -e NAME` then passes nothing.
     $env:HOST_UID = ''
     $env:HOST_GID = ''
@@ -477,7 +480,7 @@ function Invoke-Step {
     $dockerArgs += @('--user', $User,
         '-e', 'HOST_HOME', '-e', 'HOST_PLATFORM', '-e', 'HOST_NAME', '-e', 'HOST_TZ', '-e', 'HOST_LANG',
         '-e', 'HOST_LAN', '-e', 'HOST_UID', '-e', 'HOST_GID', '-e', 'DOCKER_GID', '-e', 'PACKAGE',
-        '-e', 'KEEPER_USER', '-e', 'AGENT_USER',
+        '-e', 'KEEPER_USER', '-e', 'AGENT_USER', '-e', 'HOST_DNS',
         $script:Image, 'python', '-u', 'install.py')
     $dockerArgs += $StepArgs
     $script:Ups = New-Object System.Collections.Generic.List[string]
