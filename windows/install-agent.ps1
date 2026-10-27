@@ -158,12 +158,35 @@ function Confirm-Install {
     Say "  - Create the agents home: $AgentsHome"
     Say '  - Start the keeper and the agent'
     Say '  - Open a Tailscale sign-in in your browser (unless you choose home Wi-Fi only)'
-    $answer = Read-Host 'Type yes to go on'
-    if ("$answer".Trim() -notmatch '^(y|yes)$') {
+    # A terminal may leave a CR or an LF of its Enter at the end.
+    $answer = "$(Read-Host 'Type yes to go on')".TrimEnd("`r", "`n")
+    if ($answer.Trim() -notmatch '^(y|yes)$') {
+        Say (Format-Received $answer)
         Say 'Nothing was changed.'
         Wait-ForEnter
         exit 2
     }
+}
+
+# What was typed, for a refusal: in double quotes, with what doesn't print as an escape (\r, \n, \t, \x1b, \uNNNN),
+# cut with ... when long.
+function Format-Received([string]$Text) {
+    $shown = ''
+    $count = 0
+    foreach ($c in $Text.ToCharArray()) {
+        if ($count -ge 40) { $shown += '...'; break }
+        $code = [int]$c
+        if ($code -eq 13) { $shown += '\r' }
+        elseif ($code -eq 10) { $shown += '\n' }
+        elseif ($code -eq 9) { $shown += '\t' }
+        elseif ([char]::IsControl($c) -or [Globalization.CharUnicodeInfo]::GetUnicodeCategory($c) -eq 'Format') {
+            if ($code -lt 0x100) { $shown += '\x{0:x2}' -f $code } else { $shown += '\u{0:x4}' -f $code }
+        } else {
+            $shown += $c
+        }
+        $count++
+    }
+    return 'received: "' + $shown + '"'
 }
 
 # A new folder `%ProgramData%\LocalAIAgent-setup-<random>` that only SYSTEM and Administrators can reach, with
@@ -516,8 +539,9 @@ function Copy-AgentProfile {
     }
 }
 
+# Only the keeper's file: an agent's containers are made by the installer's own start-agent step (the Engine API).
 function Start-Compose([string]$Path) {
-    if ($Path -cnotmatch '^[A-Za-z0-9._/-]+$' -or $Path.StartsWith('/') -or $Path.Contains('..')) {
+    if ($Path -cne 'keeper/compose.yml') {
         Stop-Installer "A step asked to start an unexpected file: $Path"
     }
     $file = Join-Path $AgentsHome ($Path -replace '/', '\')

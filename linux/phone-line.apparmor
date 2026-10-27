@@ -92,10 +92,11 @@ profile local-ai-agent-phone-line flags=(attach_disconnected,mediate_deleted) {
        peer=(name=org.freedesktop.DBus),
 
   # BlueZ: connecting the phone (Connect), letting its hands-free profile go (DisconnectProfile) and a full
-  # Disconnect, on the phone's device on the first adapter, the one line.py uses.
+  # Disconnect, on the phone's device on whichever adapter it is paired on (hci0 to hci99: a phone may sit on a
+  # second adapter, phones.json's "adapter"; AppArmor's {a,b} is the one way to say one or two digits).
   dbus (send)
        bus=system
-       path=/org/bluez/hci0/dev_*
+       path=/org/bluez/hci{[0-9],[0-9][0-9]}/dev_*
        interface=org.bluez.Device1
        member={Connect,Disconnect,DisconnectProfile}
        peer=(name=org.bluez),
@@ -110,13 +111,13 @@ profile local-ai-agent-phone-line flags=(attach_disconnected,mediate_deleted) {
        peer=(name=org.ofono),
   dbus (send)
        bus=system
-       path=/hfp/org/bluez/hci0/dev_*
+       path=/hfp/org/bluez/hci{[0-9],[0-9][0-9]}/dev_*
        interface=org.ofono.VoiceCallManager
        member={GetCalls,Dial,HangupAll}
        peer=(name=org.ofono),
   dbus (send)
        bus=system
-       path=/hfp/org/bluez/hci0/dev_*/voicecall*
+       path=/hfp/org/bluez/hci{[0-9],[0-9][0-9]}/dev_*/voicecall*
        interface=org.ofono.VoiceCall
        member={GetProperties,Hangup}
        peer=(name=org.ofono),
@@ -126,7 +127,7 @@ profile local-ai-agent-phone-line flags=(attach_disconnected,mediate_deleted) {
   # DisconnectReason on a call, and NameAcquired, which the bus sends every client after Hello.
   dbus (receive)
        bus=system
-       path=/hfp/org/bluez/hci0/dev_*/voicecall*
+       path=/hfp/org/bluez/hci{[0-9],[0-9][0-9]}/dev_*/voicecall*
        interface=org.ofono.VoiceCall
        member=DisconnectReason,
   dbus (receive)

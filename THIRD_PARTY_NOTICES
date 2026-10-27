@@ -27,7 +27,7 @@ Python packages
 - pydantic_core 2.50.1: MIT
 - Pygments 2.21.0: BSD-2-Clause
 - pytest 8.4.2: MIT
-- pytest-asyncio 1.4.0: Apache-2.0
+- pytest-asyncio 1.4.1: Apache-2.0
 - python-dotenv 1.2.4: BSD-3-Clause
 - PyYAML 6.0.3: MIT
 - segno 1.6.6: BSD License
@@ -44,3 +44,23 @@ Python packages
 Debian packages
 
 - ffmpeg: LGPL-2.1+, Sundry, GPL-2+, GPL-3+, Expat, BSD-3-clause, public-domain, ISC, IJG, BSD-2-clause, Zlib, BSD-1-clause, LGPL-2+, BSL, man-page
+
+Bundled files
+
+- Heebo font, subset (/app/page_static/heebo.woff2): OFL-1.1
+  Copyright 2014 The Heebo Project Authors (https://github.com/OdedEzer/heebo)
+  License text: /app/page_static/heebo-OFL.txt
+- Icon shapes in the style of Lucide, simplified (/app/page_static/icons.css): ISC
+  Copyright (c) for portions of Lucide are held by Cole Bemis 2013-2022 as part of Feather (MIT); all other copyright (c) for Lucide are held by Lucide Contributors 2022 (https://lucide.dev)
+  License text: the ISC License, at the end of these notices
+
+ISC License
+
+Permission to use, copy, modify, and/or distribute this software for any purpose with or without fee is hereby
+granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE INCLUDING ALL
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
