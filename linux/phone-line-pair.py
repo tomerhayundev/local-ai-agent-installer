@@ -140,7 +140,7 @@ def write_json(folder: Path, name: str, data: dict) -> None:
     """`data` as <folder>/<name>, mode 644 (the keeper's user reads it): written to a new file beside it and moved in,
     so the folder's other writer can't have it written through a link it planted at the name. Its mode is set on the
     open file, never by its path (the other writer could have put something else there): the path is used again only
-    by the move itself."""
+    by the move itself. A vendored copy of app/atomic_write.py: this script runs on the host, outside the image."""
     fd, tmp = tempfile.mkstemp(dir=folder, prefix=f".{name}.", suffix=".tmp")     # a new file: O_EXCL
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as file:
