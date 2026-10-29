@@ -1,18 +1,22 @@
 ### לבעלים
 
-- כשהדף נפתח בתוך הדפדפן של טלגרם, מופיע למעלה "לפתוח בדפדפן". לחיצה פותחת את הדף בדפדפן של הטלפון, כבר מחובר.
-- אם הדפדפן לא נפתח, אפשר להעתיק את הקישור ולהדביק אותו בדפדפן.
+- סוכן שמחובר לשער מספר לו גם מי הסוכן הראשי שלו, מי סוכני המשנה שלו ומי עמיתיו.
+- הוא מספר גם מה הוא עושה ואילו יכולות פועלות אצלו, כמו שהם עכשיו.
+- מי שמנהל את השער רואה במפה את סוכני המשנה מתחת לסוכן הראשי שלהם.
 
 ### Technical
 
-#45: a way out of Telegram's in-app browser. Every signed-in screen draws `page_shell.in_app_offer` hidden
-(`data-in-app`); `live.js` shows it only where Telegram's browser put `TelegramWebview` (Android) or
-`TelegramWebviewProxy` (iPhone) on the window, since its User-Agent is the system's own. Its form posts to
-`/connect/devices/browser` (`page_access.py`), which answers a screen with the `device` sign-in link (the same code as
-"להוסיף מכשיר" while it is good: the phone's browser has no session of the app's) as `page_shell.browser_link`:
-`intent://…#Intent;scheme=https;end` on Android, `x-safari-https://…` on an iPhone (iOS 17 and later), the plain link
-beside the page anywhere else, with until when it is good and the link to copy. `page_asserts.left_in_place` lets
-these two schemes stay without a new tab (the app is left, its browser stays). Not tried on a phone yet: the test plan
-is on #45.
+A joined agent's heartbeat (`POST /gate/heartbeat`, gate-connect section 5) carries `agent_id` (its own id) and
+`links`: each linked agent once, sorted by id, as `{agent, is, name}`, where `is` is what the other agent is to this
+one (`main`, `sub` or `peer`: this agent's role on the link turned round, `gate_runtime.OTHER_IS`) and `name` its card's
+name on one line, cut to the format's label. Every link the keeper handed out (the link book), the owner group's or
+not; never a key, a link id, an address or an owner. Ids the format doesn't take (`gate.AGENT_ID`) are skipped, and
+none of it is sent when the agent's own id doesn't fit. With them go `purpose` (the profile's one line, cut to
+`purpose_chars`; "" says none) and `capabilities` (installed and not paused, sorted, the format's names only, cut to
+`capabilities_max`). All of it is read anew on every beat: the links from the book (a keeper `card` notice refreshes
+it), the purpose and the capabilities from the profile the agent runs with (a change on the page restarts it). It goes
+only to a gate that names `heartbeat.body.links_max` (`gate.Description.links_max`, at most `gate.LINKS_MAX`;
+`purpose_chars` and `capabilities_max` likewise, each only when named): an older gate gets the same body as before.
+The description is read as for the label and the channels.
 
 Windows and macOS: not tested yet.
