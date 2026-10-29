@@ -1,18 +1,27 @@
 ### לבעלים
 
-- סוכן שמחובר לשער שולח לו את השם הנוכחי שלו.
-- אחרי שינוי השם בדף, מי שמנהל את השער רואה את השם החדש ויכול לבחור בו.
+- "מי עושה מה": כרטיס לכל עבודה, עם רשימה נפתחת של מודלים שנשמרת אחרי בדיקה קצרה.
+- כמה שירותי בינה מלאכותית יחד, כל אחד עם בדיקת מפתח אמיתית ועם מה שהחשבון אומר.
+- חיפוש בכל המודלים, עם תג: בבית, חינם, בתוכנית או מחיר. לפני מודל יקר הדף שואל פעם אחת.
+- מודלים שרצים במחשב של הסוכן עצמו: מתקינים, מורידים, מתחברים ומסירים מהדף.
+- סוכן מגרסה קודמת ממשיך עם אותו שירות ואותו מודל.
 
 ### Technical
 
-A joined agent's heartbeat (`POST /gate/heartbeat`, gate-connect section 5) carries `label`: its name now
-(`profile.assistant_name`, its whitespace made one space), cut to the description's `heartbeat.body.label_chars` and
-never longer than the format's label (`gate.LIMITS`). It goes only to a gate that names `label_chars`
-(`gate.Description.label_chars`, 0 when it names none): an older gate, which may refuse a field it doesn't know, gets
-the same body as before. A rename on the page is the keeper's settings job, which restarts the agent with its new
-profile, so the first beat after it has the new name; the gate never renames the agent by itself, and whoever runs the
-gate may take the name. The runtime reads the description with the key at the join, at the heartbeat loop's start and
-every `DESCRIBE_EVERY`, so a gate updated while the agent runs gets the label too; a read that fails keeps the last
-answer until the next one. Nothing else new is sent: no address, no secret, no message text.
+The AI setup is services, models and a model per job (`ai_service.AISetup`, the `ai` entry of
+`channel_secrets.json`); an older single choice is converted once at start. `ai_runtime.ServiceManager` keeps one
+Brain per job (`ai_jobs.JOBS`), switched in place; only chat's model decides tools and history, and `.env`'s `LLM_*`
+is no longer a service of the agent. Key checks per preset (`key_check` in `ai_presets.yaml`, `ai_keys.check_key`),
+model lists read whole under a raw cap and cached a day (`ai_lists.py`), tags and search (`ai_models.py`). The page's
+dropdowns are the design system's `.select` (`page_shell.select_field`), submitted by `live.js` on change, with a
+button without scripts.
+
+The `ollama` capability (off by default, Linux with host steps on): host verbs `gpu.status`, `gpu.setup_toolkit` and
+`gpu.undo_toolkit` (`keeper/host/gpu.sh`, its record under `/var/lib/local-ai-agent`), an `ollama` service in the
+agent's compose in the sidecar's network only (`OLLAMA_HOST=127.0.0.1:11434`, its own volume, the image pinned by
+digest), keeper jobs of kind `ollama` (`POST /agents/{id}/ollama`: toolkit, undo_toolkit, restart) and the removal's
+`drop_ollama`. The page's card (`pages/ollama/`, `ollama_local.py`) pulls models from the agent to its own Ollama, and
+signs in to ollama.com per agent (a link drawn only when it is ollama.com's, `/api/me` polled for the session that
+asked). `scripts/check_ai_services.py` checks the services live, by hand, never in CI.
 
 Windows and macOS: not tested yet.

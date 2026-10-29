@@ -13,6 +13,7 @@ Python packages
 - certifi 2026.10.23: MPL-2.0
 - click 8.5.0: BSD-3-Clause
 - dbus-fast 5.2.0: MIT
+- execnet 2.1.2: MIT
 - fastapi 0.115.14: MIT License
 - h11 0.16.0: MIT
 - httpcore 1.0.9: BSD-3-Clause
@@ -28,6 +29,7 @@ Python packages
 - Pygments 2.21.0: BSD-2-Clause
 - pytest 8.4.2: MIT
 - pytest-asyncio 1.4.1: Apache-2.0
+- pytest-xdist 3.8.0: MIT
 - python-dotenv 1.2.4: BSD-3-Clause
 - PyYAML 6.0.3: MIT
 - segno 1.6.6: BSD License
