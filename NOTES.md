@@ -1,27 +1,16 @@
 ### לבעלים
 
-- "מי עושה מה": כרטיס לכל עבודה, עם רשימה נפתחת של מודלים שנשמרת אחרי בדיקה קצרה.
-- כמה שירותי בינה מלאכותית יחד, כל אחד עם בדיקת מפתח אמיתית ועם מה שהחשבון אומר.
-- חיפוש בכל המודלים, עם תג: בבית, חינם, בתוכנית או מחיר. לפני מודל יקר הדף שואל פעם אחת.
-- מודלים שרצים במחשב של הסוכן עצמו: מתקינים, מורידים, מתחברים ומסירים מהדף.
-- סוכן מגרסה קודמת ממשיך עם אותו שירות ואותו מודל.
+- מנהל הסוכנים במחשב מתעדכן עכשיו לפני הסוכנים, כדי שהמודלים במחשב של הסוכן יעבדו.
+- כשמנהל הסוכנים ישן מדי, הכרטיס אומר את זה ומתי הוא יתעדכן, במקום לומר שהוא לא ענה.
 
 ### Technical
 
-The AI setup is services, models and a model per job (`ai_service.AISetup`, the `ai` entry of
-`channel_secrets.json`); an older single choice is converted once at start. `ai_runtime.ServiceManager` keeps one
-Brain per job (`ai_jobs.JOBS`), switched in place; only chat's model decides tools and history, and `.env`'s `LLM_*`
-is no longer a service of the agent. Key checks per preset (`key_check` in `ai_presets.yaml`, `ai_keys.check_key`),
-model lists read whole under a raw cap and cached a day (`ai_lists.py`), tags and search (`ai_models.py`). The page's
-dropdowns are the design system's `.select` (`page_shell.select_field`), submitted by `live.js` on change, with a
-button without scripts.
-
-The `ollama` capability (off by default, Linux with host steps on): host verbs `gpu.status`, `gpu.setup_toolkit` and
-`gpu.undo_toolkit` (`keeper/host/gpu.sh`, its record under `/var/lib/local-ai-agent`), an `ollama` service in the
-agent's compose in the sidecar's network only (`OLLAMA_HOST=127.0.0.1:11434`, its own volume, the image pinned by
-digest), keeper jobs of kind `ollama` (`POST /agents/{id}/ollama`: toolkit, undo_toolkit, restart) and the removal's
-`drop_ollama`. The page's card (`pages/ollama/`, `ollama_local.py`) pulls models from the agent to its own Ollama, and
-signs in to ollama.com per agent (a link drawn only when it is ollama.com's, `/api/me` polled for the session that
-asked). `scripts/check_ai_services.py` checks the services live, by hand, never in CI.
+1.7.0 added keeper parts (the `ollama` capability in the keeper's catalogue, `POST /agents/{id}/ollama`, the `gpu.*`
+host verbs, the `ollama` job kind) but kept keeper protocol 4, so a 1.6.x keeper never replaced itself and agents ran
+1.7.0 under it, where the Ollama card could not work. The keeper protocol is 5 (`keeper/store/base.PROTOCOL`,
+`ollama_steps.KEEPER_PROTOCOL`): a keeper that speaks 4 replaces itself before an agent moves to 1.7.1 (at 04:00
+once the release is three days old, or at once from "לעדכן עכשיו"). The page's own protocol follows it
+(`page_http.PROTOCOL`, held equal to the keeper's), since an agent reaches 1.7.1 only after its keeper does. A keeper that answers without an `ollama` row is named
+as too old on the card (`OLLAMA_WHY["old_keeper"]`), never as one that did not answer.
 
 Windows and macOS: not tested yet.
