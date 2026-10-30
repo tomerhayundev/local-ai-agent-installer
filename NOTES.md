@@ -1,18 +1,18 @@
 ### לבעלים
 
-- מנהל הסוכנים מתעדכן תמיד לפני הסוכנים, ואיתו קו הטלפון. סוכן לא רץ על גרסה חדשה ממנו.
-- בעדכון הלילי מנהל הסוכנים מתעדכן קודם, והסוכנים באותו לילה, לא בלילה שאחריו.
-- "לעדכן עכשיו" לגרסה שיצאה ממש עכשיו מעדכן קודם את מנהל הסוכנים, במקום להיכשל.
+- סוכן חדש שמצטרף לשער הבית משוחח דרך המודל של הבית, ברירת המחדל של השער.
+- תפקיד חדש שנותנים לסוכן בשער, למשל ראייה, מופיע בדף שלו בתוך דקה, בלי מפתח חדש ובלי הפעלה מחדש.
+- במודל של הבית השער מחליט כמה לחשוב, כל עוד לא בחרתם רמה בדף.
+- המודל של הבית יכול לקרוא תמונות כשלסוכן יש תפקיד ראייה.
 
 ### Technical
 
-The keeper is never older than an agent it runs. `self_update.needs_newer_keeper` is now "the release is newer than
-this keeper's VERSION" (`version.newer_than_this`), not "its image's keeper protocol is above store.PROTOCOL", so no
-release can forget a flag: 1.7.0 and 1.11.0 did, and their agents ran ahead of the keeper and of the phone line that
-follows it. The update API looks up a version its stored list does not hold yet (`Registry.releases(fresh=True)`)
-before choosing keeper-first; the updater refuses a version newer than itself before any pull. The 04:00 window that
-replaces the keeper leaves the night open, so the new keeper moves the agents in the same hour; a swap that came back,
-one not due yet, or a version in `keeper_failed` records the day, and one that could not start yet is tried at the
-next look. Keeper protocol 8 is the last move made for an update: keepers before 1.12.0 still decide by it.
+#54. `gate.heartbeat` returns a `Beat` (`next_in`, and `roles`, or None from a gate before 2026-10-30). When the roles
+differ from the saved ones, `GateRuntime` reads the description again at once and keeps `you.roles` and their thinking
+(`_keep_grant`). The description keeps `picks` (`home-ai` picks from chat, fast and vision). A role with picks is never
+asked for at a join, and it satisfies `chat.default_role` when any of its picks is asked for; this fixes joins to a gate
+whose default is `home-ai`. A role with picks and no thinking of its own can think as its granted picks can, with the
+model's default (nothing sent: the gate's decision model decides). A gate's model list (`ai_lists.gate_list`) is built
+from its record, never cached; `vision`, and `home-ai` while the agent has `vision`, take images.
 
 Windows and macOS: not tested yet.
