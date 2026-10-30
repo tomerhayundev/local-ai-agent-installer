@@ -1,13 +1,19 @@
 ### לבעלים
 
-- חיבור לגוגל חוזר עכשיו מגוגל אל הדף, במקום דף שגיאה.
-- סוכן שכבר יש לו לקוח גוגל: מוסיפים ללקוח בענן של גוגל את כתובת החזרה החדשה, ואז מתחברים שוב.
+- שיחה בטלפון נפתחת עכשיו במשפט אחד: פתיחה, השם של מי שמקבל, מי מתקשר ומה רוצים.
+- בדף, ב"איך השיחה נפתחת" מתחת לקול: הפתיחה ומי מתקשר, במילים שלכם, עם דוגמה איך זה נשמע.
+- השם והבקשה נכנסים לבד לפי מה שביקשתם, וכל השורה מופיעה בכרטיס לפני ה-✅.
+- הקול לא חוזר על ההצגה, ושואל שוב כשלא הבין תשובה, במקום לסיים את השיחה.
 
 ### Technical
 
-Google's redirect is now `/connect/google/callback` (`pages/google/state.CALLBACK`). Tailscale serves only
-`/connect` on the page's port (`keeper/tailscale.PAGE_PATH`), so `/google/callback` was answered by Tailscale's own
-404 and the code never reached the agent. `test_the_callback_is_under_the_path_tailscale_serves` holds the two
-together.
+#27. The brief carries the whole first line (`Brief.opening`, required, at most `OPENING_MAX`), which the runner says
+word for word (`force_message`); `phone_line/prompt.opening_line` is gone. `place_call` takes `name` and `request`
+(required); `phone_prefs.opening_line` joins the greeting,
+the name, who is calling (`introduce_for`: the page's, or the default by the voice's gender) and the request. The page
+keeps the two parts as phone choices (`PhoneSettings.greeting`, `.introduce`; `POST /connect/phone/opening`). "להתקשר
+שוב" carries the approved line as `opening`. The voice prompt quotes the line as already said, forbids saying it or
+introducing itself again, and asks again on an unclear answer. A line and an agent must both be on 1.11.0: the line
+refuses a brief without an opening.
 
 Windows and macOS: not tested yet.

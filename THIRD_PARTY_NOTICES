@@ -40,7 +40,7 @@ Python packages
 - uvicorn 0.32.1: BSD-3-Clause
 - uvloop 0.23.0: MIT License
 - watchfiles 1.3.0: MIT
-- websockets 17.3: BSD-3-Clause
+- websockets 17.4: BSD-3-Clause
 - wyoming 1.10.2: MIT
 
 Debian packages
