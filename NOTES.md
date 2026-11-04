@@ -1,27 +1,25 @@
 ### לבעלים
 
-- הודעות קוליות עוברות עכשיו דרך שער הבית, ולא דרך שירות תמלול נפרד: ההתקנה כבר לא מבקשת כתובת.
-- בחיבורים יש כרטיס "תמלול הודעות קוליות". כשהשיחה רצה על המודל של הבית, הוא מתמלל בלי לבחור כלום.
-- אפשר לבחור שם גם מודל תמלול של שירות אחר.
-- כשהשער עמוס הסוכן מחכה בתור, וכשמשהו לא מצליח הוא אומר בצ'אט מה קרה.
+- הסוכן מקבל מהשער כל מה שבעל השער פותח לו בכרטיס, גם את המסלול הפרטי, בלי עדכון של הסוכן.
+- בבחירת מודל מופיע כל תפקיד שהשער נותן, ומתחתיו כתוב בשביל מה הוא.
+- כשהשער מפסיק לתת תפקיד שהסוכן השתמש בו, הסוכן עובר למה שנשאר ואומר את זה בצ'אט.
 
 ### Technical
 
-Voice notes go through the gate, the one way to call it (house R7/R8, step 9; #22). The Whisper-over-Wyoming path
-is gone: `WHISPER_HOST`/`WHISPER_PORT`, the page's address form and its check, the keeper's `whisper_address` cleanup
-and the `wyoming` package; the agent drops a saved address at start. `voice.py` is the one call: OpenAI's
-`POST /audio/transcriptions` form (`file` as the channel gave it, typed by its first bytes, with its `Content-Length`;
-`model`; the profile's `language`; `response_format: json`) on the gate's own path from the description, or after any
-other service's url. The transcribe job (`ai_jobs`, the `transcribe` fact) is drawn while `voice_messages` is
-installed; its picker lists the roles `/gate/connect`'s `audio.transcriptions.roles` names (`gate._audio`; the record
-keeps `transcribe_roles` with a role that picks first, so Home AI leads, and `transcribe_path`, `_wait`, `_max`), and
-any service's speech-to-text models by their id (`ai_lists._transcribers`; none at an Ollama). The join asks for those
-roles by the audio block, never by name, and the gate models' saved facts carry `transcribe`, so "as the chat"
-transcribes through Home AI. A model chosen for the job is checked by half a second of silence through the same call
-(`voice.check`), never a chat. Busy means wait: a `202` the gate queued, or a `429`/`503` with `Retry-After`, is asked
-again with the same `X-Request-Id` until the gate's line (600 s) and its own `wait_seconds` are up; only then is it
-`waiting`. No `X-Gate-Priority` is sent (someone waits for a note). Each failure is a kind said in the agent's words
-(`words/voice.py`). The description's `up` is not a gate on the call: a stale read would refuse what the gate takes,
-and the call's own answer says why. Spoken answers are #66.
+The gate is the only judge of what an agent may use: the agent offers every role in `/gate/connect`'s `you.roles`,
+`private` and `image` included, and no role is known in code by its name. Gone: `agent_profile.FORBIDDEN_ROLES` (the
+profile, the capabilities' manifests and the keeper's `gateway_roles` no longer refuse a name), `gate_runtime.NEVER`,
+and `ai_lists`' `GATE_HOME`, `GATE_SEES` and `KINDLESS_NOT_CHAT`. Which roles see pictures is the description's
+per-role flag (`gate.SEES`, `sees_images: true` on a `roles[]` entry), kept as the record's `sees`, a role that picks
+seeing when one of its granted picks does; a gate that names the flag on no role (today's) is read as before, its
+`vision` seeing (`gate.SEES_BEFORE`), so pictures go where they went until the gate says. Each role's `for` words (one line, no control or direction characters,
+`gate.FOR_MAX`) are kept as `abouts` and shown under the role's name in the picker (the model fact `about`), and a
+job's choice lists every role the gate gives for it that is not in "my models" yet ("השער נותן גם"), so one given later
+is there with no search. A role
+the gate takes back leaves "my models" at the next read of the description: a job that used it goes back to the
+chat's model, the chat moves to the gate's `chat.default_role` (or the first chat role it still gives), and the owner
+is told once in the chat (`gate_runtime.gone_words`). Needs the house gate to describe to a known caller every role in
+its `you.roles` (private ones too, with `via`, `picks` and the flag); before that, a private role has no `via` and is
+not offered. A private role is the model's side only: Telegram and WhatsApp still carry the text.
 
 Windows and macOS: not tested yet.
