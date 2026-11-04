@@ -1,18 +1,17 @@
 ### לבעלים
 
-- תמונה שהמודל של הבית מצייר בעצמו מגיעה עכשיו בצ'אט כתמונה, ולא כטקסט ארוך.
-- התמונה לא נשמרת בהיסטוריה של השיחה, כך שהשיחה הבאה לא נעשית כבדה בגללה.
+- המודל של הבית מוצע עכשיו גם ליצירת תמונות, ראשון ברשימה, כשהשער של הבית אומר שהוא יוצר תמונות.
+- כשהשיחה רצה על המודל של הבית, יצירת תמונות עובדת דרכו בלי לבחור שום דבר.
 
 ### Technical
 
-A chat answer that carries the picture the model made itself (the gate's Home AI draws and answers with the picture
-inline as a markdown `data:` address; an OpenRouter image model answers in `message.images`) gives it to the turn as
-its picture: `pictures.py` takes it out of the text (`take_inline`, `from_parts`: only `data:image` addresses, decoded
-under `PICTURE_MAX`, kept only when the first bytes are a picture's; a link elsewhere is never fetched), `brain.from_wire`
-puts it in the message's `image`, and the turn sends it by the one picture path (`send_image` on every channel; a
-channel without one gets the words and says so). The text kept, logged and sent never carries it, and `brain.to_wire`
-strips one saved before (`strip_inline`), so a 3 MB message already in a history is not sent to the model again.
-`images.py` takes its picture check from `pictures.mime_of` (one implementation). No text the `Messenger` sends
-(a reply, its parts, a picture's caption, a notice) carries a `data:` address of any kind (`pictures.no_data`).
+A gate role's kind is its own `via` (chat, audio, media, image); what makes images is the description's
+`images.generations.roles` (house #225: every image role says `via` image, and home-ai is listed first for a client
+with a house image role). The gate's record keeps them apart (`kinds`, and `image_roles` in the gate's order), and
+`ai_lists.gate_list` makes one row per role: `tools` for a chat role, `image_out` for an image role, so home-ai is both
+and comes first among the image makers; a record from before keeps its old reading until the next read. The saved
+facts of the gate's models follow each read of the description (`gate_runtime._gate_facts`, at the join and in
+`_keep_grant`), so the images job's "as the chat" makes pictures through home-ai, and stops when the gate stops listing
+it. Needs the gate of house #225: before it, image-safe says `via` chat and would be offered for chat too.
 
 Windows and macOS: not tested yet.
