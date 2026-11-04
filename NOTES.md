@@ -1,17 +1,14 @@
 ### לבעלים
 
-- המודל של הבית מוצע עכשיו גם ליצירת תמונות, ראשון ברשימה, כשהשער של הבית אומר שהוא יוצר תמונות.
-- כשהשיחה רצה על המודל של הבית, יצירת תמונות עובדת דרכו בלי לבחור שום דבר.
+- עדכון של סוכן שבוחר מודלים משלו לעבודות (מיילים, תמונות) כבר לא חוזר אחורה בלי סיבה.
+- זה קרה כשהשער של הבית שינה משהו בתפקידים של הסוכן בדיוק בזמן העדכון.
 
 ### Technical
 
-A gate role's kind is its own `via` (chat, audio, media, image); what makes images is the description's
-`images.generations.roles` (house #225: every image role says `via` image, and home-ai is listed first for a client
-with a house image role). The gate's record keeps them apart (`kinds`, and `image_roles` in the gate's order), and
-`ai_lists.gate_list` makes one row per role: `tools` for a chat role, `image_out` for an image role, so home-ai is both
-and comes first among the image makers; a record from before keeps its old reading until the next read. The saved
-facts of the gate's models follow each read of the description (`gate_runtime._gate_facts`, at the join and in
-`_keep_grant`), so the images job's "as the chat" makes pictures through home-ai, and stops when the gate stops listing
-it. Needs the gate of house #225: before it, image-safe says `via` chat and would be offered for chat too.
+When a gate's record changes (a role given, or what a role is), the service manager re-switches every job and cancels
+each job's own re-fit (`model-fit-<job>`). `/health` let only the chat's cancelled re-fit go (`model-fit`), so it
+reported the others as dead loops, and the keeper rolled back every update that met such a change in its watch
+(seen 2026-11-04 on 1.14.0 and twice on 1.15.0: dead `model-fit-mail`, `-web`, `-vision`, `-images`).
+`Wiring.stopped_on_purpose` now lets every job's cancelled re-fit go; one that stopped by itself is still dead.
 
 Windows and macOS: not tested yet.
