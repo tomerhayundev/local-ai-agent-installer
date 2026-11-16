@@ -1,16 +1,18 @@
 ### לבעלים
 
-- כשמחוברים גם טלגרם וגם וואטסאפ, מה שהסוכן שולח בלי שביקשו הולך קודם לטלגרם.
-- זה כולל תזכורות, מיילים חדשים והסיכום היומי.
-- וואטסאפ מקבל אותן רק כשהחלון שלו פתוח, או כשהוא הערוץ היחיד.
-- סוכן עם ערוץ אחד ממשיך בדיוק כמו קודם.
+- בהגדרות › התראות יש שלושה סוגים חדשים: חפיפה ביומן מחר, הזמנה שמחכה לתשובה, ומצב בבית שבחרת.
+- כל אחד כבוי עד שבוחרים לו: מיד, בסיכום היומי, או רק ברשימה.
+- את המצבים בבית (למשל דלת שנשארה פתוחה) בוחרים באותו מקום.
+- סוכן קיים ממשיך בדיוק כמו קודם.
 
 ### Technical
 
-#70 step 2b (owner decision 5). The ledger sends every row through `Messenger.notify_unasked`, whose order
-(`unasked_order`) puts a channel with no window (`deadline` None) first, then one whose window is open, and a channel
-that would need its template only last, when none ahead of it took the item, so nothing is lost while Telegram is
-broken. The evening summary decides "send early" from `unasked_deadline`. One channel: as before. Notices not on the
-ledger yet keep the main channel's order.
+#70 step 5. `watchers.py` adds three kinds found in code with no model call, each its own source on the ledger:
+`calendar_clash` (two timed events tomorrow that overlap), `calendar_invite` (an invitation in the next 14 days whose
+calendar owner has not answered: `gcal.waiting`) and `home_state` (an entity the owner chose, in the chosen state for
+the chosen minutes, read from Home Assistant's state API: `Home.state`). A watch kind's ceiling defaults to `off`
+(`agent_profile.ceiling_default`), so its watcher does not even look; `proactive.home` keeps the owner's watches. An
+item no longer true when it would be sent is dismissed from the watcher's last read. The summary's digest lines take
+an icon per kind.
 
 Windows and macOS: not tested yet.
