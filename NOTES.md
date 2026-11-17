@@ -1,17 +1,17 @@
 ### לבעלים
 
-- תדריך בוקר: מה ביומן היום, תזכורות להיום, ומה שחיכה לסיכום מהלילה.
-- הוא נשלח עם ההודעה הראשונה שלך בבוקר, או בשעה שבחרת אם עוד לא כתבת.
-- מפעילים ובוחרים שעה בהגדרות › התראות. סוכן חדש מקבל אותו מופעל.
-- סוכן קיים ממשיך בדיוק כמו קודם.
+- להודעות של המעקב ביומן ובבית יש עכשיו 👍 ו"פחות כאלה".
+- "פחות כאלה" שולח את הסוג הזה רק לסיכום, עד שבוחרים אחרת בהגדרות › התראות.
+- בהגדרות › התראות רואים מתחת לכל סוג כמה הודעות עזרו, והצעה לסיכום כשרובן לא עזרו.
+- שום דבר לא זז לבד.
 
 ### Technical
 
-#70 step 6 (owner decision 4). `daily.morning_tick` builds today's brief in the evening summary's shape (the calendar
-from now, today's reminders, "couldn't check", the digest items, the status line) as one ledger item per date
-(`MorningSource`, `morning_sent`). It goes after the reply to the owner's first text or voice message at or after 05:00
-(`Wiring.morning_asked`, from `owner_chat`), or at `proactive.morning` when a channel can send then (Telegram; WhatsApp
-only inside its window); never 6 hours past that. Exempt from quiet hours and the cap. A digest item is logged only when
-the agent has neither summary. The template gives a new agent `morning: "08:00"`; an existing agent has none.
+#70 step 8. `reactions.py` keeps the owner's reaction in each pushed row (`reaction`): `tapped` (an item's own button
+or 👍), `dismissed` (an email's ignore), `less` ("פחות כאלה"), and `ignored`, computed a day after a send with no
+reaction. A watcher's item gets 👍 / "פחות כאלה" (`rx:up|less:<id>`) when the ledger sends it; an email keeps its own
+buttons. "פחות כאלה" latches the kind (meta `proactive_less`), and `decide` sends it to the summary (reason `less`)
+until the owner saves the kinds' choices on the page. The page shows, under each kind, how many helped and suggests the
+summary when at most a fifth of at least 5 helped.
 
 Windows and macOS: not tested yet.
