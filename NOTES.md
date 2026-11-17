@@ -1,18 +1,17 @@
 ### לבעלים
 
-- בהגדרות › התראות יש שלושה סוגים חדשים: חפיפה ביומן מחר, הזמנה שמחכה לתשובה, ומצב בבית שבחרת.
-- כל אחד כבוי עד שבוחרים לו: מיד, בסיכום היומי, או רק ברשימה.
-- את המצבים בבית (למשל דלת שנשארה פתוחה) בוחרים באותו מקום.
+- תדריך בוקר: מה ביומן היום, תזכורות להיום, ומה שחיכה לסיכום מהלילה.
+- הוא נשלח עם ההודעה הראשונה שלך בבוקר, או בשעה שבחרת אם עוד לא כתבת.
+- מפעילים ובוחרים שעה בהגדרות › התראות. סוכן חדש מקבל אותו מופעל.
 - סוכן קיים ממשיך בדיוק כמו קודם.
 
 ### Technical
 
-#70 step 5. `watchers.py` adds three kinds found in code with no model call, each its own source on the ledger:
-`calendar_clash` (two timed events tomorrow that overlap), `calendar_invite` (an invitation in the next 14 days whose
-calendar owner has not answered: `gcal.waiting`) and `home_state` (an entity the owner chose, in the chosen state for
-the chosen minutes, read from Home Assistant's state API: `Home.state`). A watch kind's ceiling defaults to `off`
-(`agent_profile.ceiling_default`), so its watcher does not even look; `proactive.home` keeps the owner's watches. An
-item no longer true when it would be sent is dismissed from the watcher's last read. The summary's digest lines take
-an icon per kind.
+#70 step 6 (owner decision 4). `daily.morning_tick` builds today's brief in the evening summary's shape (the calendar
+from now, today's reminders, "couldn't check", the digest items, the status line) as one ledger item per date
+(`MorningSource`, `morning_sent`). It goes after the reply to the owner's first text or voice message at or after 05:00
+(`Wiring.morning_asked`, from `owner_chat`), or at `proactive.morning` when a channel can send then (Telegram; WhatsApp
+only inside its window); never 6 hours past that. Exempt from quiet hours and the cap. A digest item is logged only when
+the agent has neither summary. The template gives a new agent `morning: "08:00"`; an existing agent has none.
 
 Windows and macOS: not tested yet.
