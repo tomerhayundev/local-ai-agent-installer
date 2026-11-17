@@ -1,17 +1,23 @@
 ### לבעלים
 
-- להודעות של המעקב ביומן ובבית יש עכשיו 👍 ו"פחות כאלה".
-- "פחות כאלה" שולח את הסוג הזה רק לסיכום, עד שבוחרים אחרת בהגדרות › התראות.
-- בהגדרות › התראות רואים מתחת לכל סוג כמה הודעות עזרו, והצעה לסיכום כשרובן לא עזרו.
-- שום דבר לא זז לבד.
+- משימות קבועות: מבקשים בצ'אט דוח קבוע, למשל "כל יום ראשון בשמונה תשלח לי מה יש ביומן ומה הגיע במייל".
+- הסוכן מראה את המשימה בשורה אחת, והיא נשמרת רק אחרי ✅.
+- הדוח מגיע בזמן, מיד או בסיכום, לפי ההגדרות של התראות. כשאין מה לדווח לא נשלח כלום.
+- רואים, משהים ומבטלים משימות בצ'אט ובעמוד של היכולת. היכולת כבויה עד שמתקינים אותה.
 
 ### Technical
 
-#70 step 8. `reactions.py` keeps the owner's reaction in each pushed row (`reaction`): `tapped` (an item's own button
-or 👍), `dismissed` (an email's ignore), `less` ("פחות כאלה"), and `ignored`, computed a day after a send with no
-reaction. A watcher's item gets 👍 / "פחות כאלה" (`rx:up|less:<id>`) when the ledger sends it; an email keeps its own
-buttons. "פחות כאלה" latches the kind (meta `proactive_less`), and `decide` sends it to the summary (reason `less`)
-until the owner saves the kinds' choices on the page. The page shows, under each kind, how many helped and suggests the
-summary when at most a fifth of at least 5 helped.
+#70 step 4, #8 v1. The capability `scheduled_tasks` (off by default) adds `create_task` (action: a code-written ✅
+card, saved on ✅ and checked again then), `list_tasks` (read), `pause_task` and `cancel_task` (own). A task is a set of
+parts (calendar and reminders for the window ahead, the mail the mail watch stored for the window behind, optionally
+only mail naming its words), daily, weekly or monthly, at most 10. `scheduled.py` claims each due slot in one update
+that moves the next slot on, reads in code (no model, no tools), and hands the report to the proactive ledger
+(`initiator: task`, kind `scheduled_task`, `now` or `digest` by the task); nothing found is a `log` row only; a part
+that can't be read is said; a run that read nothing retries at 5/15/30 minutes, and 3 failed slots in a row tell the
+owner once; a slot later than half its period is skipped and a resumed task gets one catch-up. `Tools.initiator`
+holds unattended runs to `read` tools and ✅ drafts, with `own` and the task tools blocked; another agent's turn never
+touches the tasks. Routing offers the task tools alone for a standing report ("כל … תשלח לי"), never with a reminder
+word, and never to a message that names no topic. The page lists, pauses, resumes and cancels tasks on the
+capability's page. Eval cases 108-115, held-out h123-h125.
 
 Windows and macOS: not tested yet.
