@@ -1,19 +1,29 @@
 ### לבעלים
 
-- הסרת סוכן עוצרת גם שינוי בקישורים שכבר רץ איתו, כך שלא נשאר קישור לסוכן שהוסר.
-- שינוי שנעצר באמצע מחזיר את הקישורים שהיו לפניו.
+- הסוכן יכול לענות בהודעה קולית: על הודעה קולית, או על כל הודעה.
+- כבוי עד שבוחרים בהגדרות › על הסוכן, תחת "תשובות בקול", כשהודעות קוליות מותקנות.
+- הקול הוא של המודל שנבחר ב"הקראת תשובות" בחיבורים, ונבדק במשפט קצר.
+- אישורים וכפתורים נשארים בכתב. כשמשהו לא מצליח, התשובה מגיעה בכתב עם הסיבה.
 
 ### Technical
 
-#65, from the security review of 1.15.3. `Jobs.cancel_all` (`keeper/jobs/runs.py`) now cancels every link job that
-has not ended and `links_job.touches` the agent, running or waiting, not only a waiting one that names it. A link job
-that has written already (`links_job.wrote`: its drop or mint ran) is not stopped before its next step, so its ends are
-told what changed; a change cancelled after its drop makes no new link and puts back the links it dropped, ending
-`cancelled` (`put_back_part` when one could not be made again). `ends_made` is kept for every link job in
-`Jobs._begin`, not only one that waits; `Jobs.ends_moved` checks it at the turn check, before the mint (`no_agent`)
-and before each put-back write, so no link is written to an agent removed or made again under its id since the job
-began. `queue.link_ends` also names the ends of the links a job holds. Tests in `test_keeper_links_job.py`: a running
-link cancelled by a removal, one that wrote ending as it would, a change cancelled after its drop putting back, and a
-running link or a put-back never reaching an agent made again under its id.
+#66. The owner's choice is `voice.answer` in `agent.yaml` (`off`, the default; `to_voice`; `always`), read by
+`agent_profile` (`VOICE_ANSWERS`) and written by the keeper's settings job (`catalogue.SETTINGS`), from a form in
+Settings › about drawn while voice messages are installed (`pages/settings/`, `read_voice`). No tool reaches it. The
+speech job (`ai_jobs.JOBS["speech"]`, the `speech` fact) is drawn while it is on (`ai_jobs.spoken_on`, `SPOKEN`, handed
+to the AI page as `AIPageDeps.switched`). Its list: the gate's roles `audio.speech` names (`gate_grant.made_of` keeps
+`speech_roles`, Home AI first, `speech_path`, `speech_wait`; the join asks for them while it is on), and any service's
+`tts-*` / `gpt-*-tts` models (`ai_lists.AUDIO_JOBS`); its check is a short sentence spoken (`speech.check`).
+`speech.py` is the one call: `POST {base}/audio/speech` with `{model, input, response_format: opus}` (and OpenAI's
+`voice` to a service that is not a gate), busy meaning wait with the same `X-Request-Id` as `voice.transcribe`; a
+400/422 naming `response_format` is asked once more for mp3 (Hermes's fallback, `fe8b920cae`), and `voice_note` makes
+Ogg Opus of anything else with ffmpeg. `spoken_text.py` strips what is for the eye and cuts at sentence ends under
+`CHARS`, at most `PARTS` voice notes. `send_voice` joins the channel interface (Telegram `sendVoice`; WhatsApp an
+uploaded `audio` with `voice: true`, the upload shared with `send_image` in `WhatsApp._upload`) and `Messenger`. The
+agent speaks only the owner's own turn, an answer that is text alone with no address or code in it (`Agent._speaks`,
+`spoken_text.for_the_eye`), after what was heard as text;
+the history keeps the text, the audio is never kept, and every failure sends the text with
+`words/voice.speech_problem`. Tests: `test_speech.py`, `test_spoken_answers.py`, the fake gate's speech endpoint, the
+preview's `ai-spoken` state. No prompt, tool or routing changed, so no evaluation ran.
 
 Windows and macOS: not tested yet.
