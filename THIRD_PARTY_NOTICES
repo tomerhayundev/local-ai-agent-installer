@@ -24,8 +24,8 @@ Python packages
 - packaging 26.3: Apache-2.0 OR BSD-2-Clause
 - pip 25.0.1: MIT
 - pluggy 1.7.0: MIT
-- pydantic 2.14.3: MIT
-- pydantic_core 2.50.4: MIT
+- pydantic 2.14.4: MIT
+- pydantic_core 2.50.5: MIT
 - Pygments 2.21.0: BSD-2-Clause
 - pytest 8.4.2: MIT
 - pytest-asyncio 1.5.0: Apache-2.0
