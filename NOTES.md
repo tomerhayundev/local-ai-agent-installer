@@ -1,13 +1,16 @@
 ### לבעלים
 
-- בזמן שמתקינים חיפוש ברשת, הדף כותב "הקמת שירות החיפוש ליד הסוכן", ולא שם של שירות אחר.
-- גם בהסרה של חיפוש ברשת כתוב מה מוסר: שירות החיפוש וההגדרות שלו.
+- בכרטיס של החיפוש ברשת בדף, בוחרים מה הסוכן קורא: את העמודים עצמם, או רק את תקצירי החיפוש.
+- עד שבוחרים, הוא קורא את העמודים, עם כל מודל. אפשר להחליף בכל רגע, והשינוי חל מהחיפוש הבא.
 
 ### Technical
 
-The web capability's keeper step had the id `service`, which Ollama's step has too, and the page words a step by its id
-(`STEP_WORDS`), so installing web showed "הקמת Ollama ליד הסוכן" (seen when web went on for a real agent after its
-update to 1.29.0). Web's step is now `search`, with its own words, and the removal's `drop_search` has words too. A
-test holds every step id to one step across the manifests, and every removal step to its words.
+The web job's reader no longer gets its amount from the model's size: a model of unknown size (a gate's `home-ai`)
+counted as the small tier and read snippets only. What it reads is now the owner's choice on the web job's card
+(`AISetup.reading`, saved under `ai.reading` only when it is not the default; `POST /connect/ai/reading`;
+`ServiceManager.set_reading`), read at each search through `Tools.web_reading`: `pages` (8 snippets and 3 pages of
+8000 characters, the default) or `snippets` (5 snippets, no page). `web.READ` holds the two; `web:` in
+`model_profiles.yaml`, `Profile.web`, `web.web_caps`, `Brain.web_caps` and the cloud path's `CLOUD_CAPS` are gone.
+The eval's reader reads the pages.
 
 Windows and macOS: not tested yet.
