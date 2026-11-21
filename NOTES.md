@@ -1,17 +1,20 @@
 ### לבעלים
 
-- הודעה שנשלחה לסוכן בזמן שהוא מתעדכן או מופעל מחדש כבר לא הולכת לאיבוד: הוא עונה עליה כשהוא חוזר.
-- הודעה שנקטעה באמצע הטיפול לא מטופלת פעמיים: הסוכן כותב שהיא לא טופלה עד הסוף, ואפשר לשלוח אותה שוב.
+- הסוכן עובד בדיוק כמו קודם: אותם כלים, אותן תשובות ואותם אישורים.
+- השינוי בפנים: כל יכולת מוגדרת עכשיו במקום אחד, כך שיכולות חדשות יגיעו מהר יותר.
 
 ### Technical
 
-An owner's message that is a turn (text, a recording) is kept in the database from the moment a channel hands it
-over until its turn ended (`owner_inbox`, `db/owner_inbox.py`), whichever channel it came on: until now it waited
-only in memory, after Telegram had stored its offset and WhatsApp had marked it seen, so a restart lost it for good.
-At start-up `OwnerChat.resume` runs the messages that still waited, in order, before a channel hands over a new one;
-one whose turn the stop cut off is never run twice, and one that waited longer than `REPLAY_WITHIN` is not run late:
-the owner is told once (`MESSAGE_LOST`). It is the link inbox's rule (new, working, reported after a restart).
-Telegram hands each update of a batch over in a task of its own, in order, so a later message of the batch is kept
-while the first one's turn still runs. Issue 72, item 7.
+Issue 72, item 1, stage 1: every fact about a tool (its class, approval kind, `private`, `outside`, `owner_only`,
+timeout, `words_only`, `with_calls`, `held_until_asked`, `secret_args`, levels) and each capability's routing topics are
+declared only in its manifest (`capabilities/tool_facts.py` reads them; a fact left out takes the safe side). `Tools`
+and `routing.py` read them through `capabilities.catalogue`, `tool_facts`, `own_tools` and `tools.facts`; a rule of one
+capability is a route hook in its own tools module (`route:` in its manifest: `alone`, `topic`, `after`, `last`,
+`message`, `outward`). Gone: `CLASSES`, `APPROVAL_KIND`, `CAPABILITY_TOOLS`, `PRIVATE_READS`, `OUTSIDE_TOOLS`,
+`MEMORY_TOOLS`, `TIMEOUTS`, the per-family lists and the executors' dict (an executor is `_run_<kind>`). Nothing the
+model sees changed: `scripts/tool_equivalence.py` gives the same picks and schemas, byte for byte, on 62,160 cases
+(12 agent shapes, both fits, with and without a call in hand, every eval message, every routing test's text and every
+pair of two topics' words). A narrower lookup's topic (`narrow`: free time, a saved address) comes after every
+capability's main topics, as before; a tool's `secret_args` left out means its arguments are never logged.
 
 Windows and macOS: not tested yet.
