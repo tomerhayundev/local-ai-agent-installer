@@ -1,26 +1,28 @@
 ### לבעלים
 
-- סוכן עם חיפוש באינטרנט מקבל את אייקון החיפוש, וסוכן עם מייל בלבד את אייקון המייל.
-- כשמגדירים את כרטיס המסך למודלים שרצים אצל הסוכן, או מפעילים אותם מחדש, דף היכולת מראה את ההתקדמות.
+- שינוי פנימי, בלי שינוי בדף: מה שהטלפון עושה בעבודות של המחשב כתוב עכשיו במקום אחד משלו.
+- הוספת טלפון והסרתו עובדות כמו קודם, באותן מילים.
 
 ### Technical
 
-Issue 72, item 4, stage 1: generic code names no capability where item 4 points, and the rest is measured. A
-manifest's `code:` names the capability's own modules (never one of the generic hubs, `capabilities/own.py`
-`GENERIC`), and two guards pin what generic code still names or imports of a capability:
-`test_generic_code_names_no_capability` (`NAMED`, per module and name: 245 names in 59 files at the start, 218 in 56
-now) and `test_generic_code_imports_no_capability_module` (`IMPORTS`: 95 imports in 38 files, 92 now); each pin only
-goes down, and the claims themselves are pinned beside them (`CLAIMED`), none covering a pinned module. A manifest's `jobs:` declares the capability's own jobs, actions of the one `capability` job kind (steps by
-the one Need parser, words named in `words/capabilities.py`, `args`, `protocol`), refused by `catalogue.refusal`
-(version, platform, host steps when a step is one, `not_installed`) and asked again when their turn comes (a queued
-job whose capability went ends `failed` `not_installed`, a new job end). Ollama's three card jobs move into its
-manifest, `keeper/ollama_jobs.py` goes, and `POST /agents/{id}/ollama` starts a capability job; a job record of the
-old `ollama` kind ends `unknown_kind`. The job kinds are one registry, `keeper/jobs/kinds.py` `KINDS`; the phone's
-entry is registered by `keeper/line_steps.py` until stage 2. `keeper/jobs/` names no capability (10 names to 0), and
-`pages/running/` keeps a job of any kind with no list of kinds (7 to 0). The agent's icon is its ranked capability's
-own `icon` (`icon_rank`: phone 10, calendar 20, email 20, home 30, web 40; `capabilities.agent_icon`, `own_icon`, a
-paused capability counting), replacing `page_shell.KIND_ICONS`, `kind_icon`, `my_icon` and `shown_icon`. The
-platforms' names are one table, `capabilities.PLATFORM_NAMES`. The page snapshot against 1.30.6 differs only in those
-two icons.
+Issue 72, item 4, stage 2: the phone's part in the jobs' lifecycle is its manifest's. A manifest names its keeper
+module (`keeper:`, a module of `app/keeper/`, its own code without a `code:` line), holding only hooks of the closed
+table `keeper/jobs/kinds.py` `LIFECYCLE` (`actions`, `UNLESS`, `REVOKES`, `HOST_REMOVALS`, `check`, `on_start`,
+`on_load`, `PRIVATE_KEYS`, `on_end`, `waits`, `busy_steps`, `release`, `removal`), which `Jobs` collects from the
+catalogue it is made with. Every phone branch of `keeper/jobs/` and `keeper/preset_job.py` is a hook call now (the
+removal's hint and pairings, `line_before` in one place, the pairing reset at load, the records' private keys, the new
+line key revoked at a bad end, the line's busy steps, a removed agent's checks, what a removal would take). The
+phone's `add`, `drop` and `release` are declared `jobs:` of the one `capability` kind (`release` with
+`after_removal: true`: started only by the phone's `release` hook, skipping the refusals that need the agent's record,
+and resumed without it); the `phone` job kind is gone, and a job record of it ends `unknown_kind`. A declared job's
+audit line names its capability (`phone.add`, `ollama.restart`). The queue's phone line is one line per capability
+with `waits` (`*phone`). The page's words for a phone added or removed come from the manifest (`PHONE_ADD`,
+`PHONE_DROP`, `PHONE_RELEASE`); as every capability's own job, a failed phone add or drop whose step ran no longer
+says nothing changed. A removed agent's checks never raise out of its removal (a refused one is logged).
+Splits by responsibility: `capabilities/presets.py` (out of `capabilities/__init__.py`),
+`keeper/line_steps.py` into the line's records (`line_steps.py`), its jobs' steps (`line_actions.py`) and its hooks
+(`line_hooks.py`), and `keeper/jobs/records.py` (the mixin of a job's record). `keeper/jobs/` names no capability and
+imports none of its modules: no pin left there. The guards: 216 names in 56 files (218 before), 84 imports in 34
+files (92 in 38). The page snapshot against 1.30.7 shows no difference but the known timing noise.
 
 Windows and macOS: not tested yet.
