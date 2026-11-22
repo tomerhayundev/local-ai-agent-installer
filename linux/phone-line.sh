@@ -41,41 +41,26 @@
 #                                         `WOULD <action>` for each change and makes none
 set -u
 
+# The shared helpers (say, hint, die, refuse, part, part_done, act, root_alone, put_record): host-common.sh, which the
+# keeper's host helper puts before this script on standard input. Run by hand, it is read from beside this script (the
+# installer's folder) or from app/capabilities/ (the repo's and the image's).
+if ! declare -F say > /dev/null; then
+    here="$(dirname "$(readlink -f "$0")")"
+    if [ -f "$here/host-common.sh" ]; then
+        . "$here/host-common.sh"
+    elif [ -f "$here/../../host-common.sh" ]; then
+        . "$here/../../host-common.sh"
+    else
+        printf '%s\n' "host-common.sh is missing: it belongs next to this script." >&2
+        exit 2
+    fi
+fi
+
 PACKAGES="bluez ofono pipewire pipewire-bin wireplumber libspa-0.2-bluetooth"
 PAIR_PACKAGES="python3-dbus python3-gi"      # for phone-line-pair.py, the pairing agent
 PAIR_SECONDS=180
 CALL_RING_SECONDS=45
 RECORD_SECONDS=5
-
-say() { printf '%s\n' "$*"; }
-# A hint for running it by hand, left out when the keeper's helper runs it (--helper).
-hint() { [ -n "${HELPER:-}" ] || say "$*"; }
-# The part of the command running now, for the helper's STEP lines (a part that dies is `failed`).
-PART=""
-die() {
-    [ -n "${HELPER:-}" ] && [ -n "$PART" ] && say "STEP $PART failed"
-    printf '%s\n' "$*" >&2
-    exit 2
-}
-# A reason the keeper words (with --helper), then the words for a person.
-refuse() {
-    [ -n "${HELPER:-}" ] && say "REASON $1"
-    shift
-    die "$@"
-}
-part() { PART=$1; }
-part_done() {
-    [ -n "${HELPER:-}" ] && [ -n "$PART" ] && say "STEP $PART done"
-    PART=""
-}
-# A command that changes the computer: run, or with --dry-run only said.
-act() {
-    if [ -n "${DRY_RUN:-}" ]; then
-        say "WOULD $*"
-        return 0
-    fi
-    "$@"
-}
 
 need_root() {
     [ -n "${DRY_RUN:-}" ] && return 0
@@ -223,23 +208,6 @@ package_present() {
 }
 # The record's folder and file.
 record_folder() { printf '%s\n' "$SETUP_HOME/keeper/host"; }
-# Whose a record must be to count: root's (in a --dry-run, PHONE_LINE_TEST_OWNER stands for root, for the tests).
-record_owner() {
-    if [ -n "${DRY_RUN:-}" ] && [ -n "${PHONE_LINE_TEST_OWNER:-}" ]; then
-        printf '%s\n' "$PHONE_LINE_TEST_OWNER"
-    else
-        printf '0\n'
-    fi
-}
-# Whether a folder (and a file in it) is root's alone: no link, root's, writable by nobody else.
-root_alone() {
-    owner=$(record_owner)
-    for path in "$@"; do
-        [ -e "$path" ] && [ ! -L "$path" ] || return 1
-        [ "$(stat -c %u "$path" 2>/dev/null)" = "$owner" ] || return 1
-    done
-    [ -z "$(find "$@" -maxdepth 0 -perm /022 2>/dev/null)" ]
-}
 record_trusted() {
     [ -d "$(record_folder)" ] && [ -f "$1" ] && root_alone "$(record_folder)" "$1"
 }
@@ -299,25 +267,11 @@ setup_record() {
     set +f
     printf '{"packages": %s, "linger_was_off": %s, "files": %s}' "$list" "$linger" "$(json_list "$@")"
 }
-# The record kept, as root, in a folder root alone writes: <home>/keeper/host is made by root (mode 755) when it is
-# missing, and refused when it is a link, someone else's, or writable by anyone else. The new file is made there with
-# O_EXCL (noclobber) and its mode from the umask (644), then moved over the old one: nothing is changed by a path
-# another user could have pointed elsewhere.
-put_record() {
-    keeper="$SETUP_HOME/keeper"
-    folder=$(record_folder)
-    [ -d "$keeper" ] && [ ! -L "$keeper" ] || return 1
-    if [ ! -e "$folder" ] && [ ! -L "$folder" ]; then
-        mkdir -m 755 "$folder" || return 1
-    fi
-    [ -d "$folder" ] && root_alone "$folder" || return 1
-    tmp="$folder/.$SETUP_RECORD.$$"
-    rm -f "$tmp"
-    if (umask 022 && set -C && printf '%s\n' "$1" > "$tmp") && mv -fT "$tmp" "$folder/$SETUP_RECORD"; then
-        return 0
-    fi
-    rm -f "$tmp"
-    return 1
+# The record kept, as root, in a folder root alone writes (put_record): <home>/keeper/host, made by root (mode 755)
+# when it is missing, and only inside the keeper's folder, which must be no link; the file's mode is 644.
+put_setup_record() {
+    [ -d "$SETUP_HOME/keeper" ] && [ ! -L "$SETUP_HOME/keeper" ] || return 1
+    put_record "$(record_folder)" "$SETUP_RECORD" 755 022 "$1"
 }
 keep_record() {
     [ -n "${SETUP_HOME:-}" ] || return 0
@@ -325,7 +279,7 @@ keep_record() {
     if [ -n "${DRY_RUN:-}" ]; then
         say "WOULD record $(record_folder)/$SETUP_RECORD $record"
     else
-        put_record "$record" || die "What setup changes could not be recorded in $(record_folder) (it must be root's alone)."
+        put_setup_record "$record" || die "What setup changes could not be recorded in $(record_folder) (it must be root's alone)."
     fi
 }
 

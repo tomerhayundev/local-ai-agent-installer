@@ -1,27 +1,25 @@
 ### לבעלים
 
-- הסוכן עובד כמו קודם: אותם מודלים במחשב שלו, אותו חיפוש ברשת ואותו דף.
-- עדכון של הסוכן רושם עכשיו גם גרסה חדשה של שירות החיפוש ושל המודלים שלידו.
-- הגרסה החדשה נכנסת לפעולה כשהשירות מופעל מחדש.
-- כשהחיבור של הסוכן מופעל מחדש, שירות המודלים שלידו חוזר אליו לבד, עם הכרטיס.
+- הסוכן עובד כמו קודם: אותם צעדים במחשב, אותה הגדרה של קו הטלפון ואותה בדיקה של כרטיס המסך.
+- כשמריצים את קו הטלפון ביד מתוך המתקין, יש לידו עכשיו עוד קובץ אחד שהוא צריך.
 
 ### Technical
 
-Issue 72, item 1, stage 3 (a service beside the agent): a capability's service is declared once, in its manifest's
-`service:` block (image pinned by digest, memory limit, port, `network: sidecar`, `gpu: when_present`, a named volume,
-a config file from a template in the capability's folder, a health check), read strictly by `capabilities/services.py`
-and listed by `capabilities.services()`. The keeper loops over the declared services everywhere it named Ollama and the
-web search: the compose renderer (`keeper/compose_services.py`), `compose_engine`, the store (`AgentEntry.services`,
-stored in the same shape as before, so every record reads with no migration and an older keeper still reads it), the
-container names (`updates.containers.service_name`), removal, the lifecycle and the jobs. `keeper/service_steps.py` is
-the one service step (make, make everywhere, drop), replacing `ollama_steps.py` and `search_steps.py`; the Ollama card's
-own jobs moved to `keeper/ollama_jobs.py`. The manifests' keeper action is `service` and their revoke `service`; step
-ids are unchanged. An update now pins each service's image and memory limit in the agent's compose file from the
-manifest (`compose.pin_services`), so a new SearXNG or Ollama image reaches existing agents when the service is next
-made. Every service in the sidecar's network follows it in the lifecycle (the Ollama too, its card kept: `DeviceRequests`
-joins `HOST_KEYS`). One compose line changes form: `OLLAMA_HOST` is now quoted like every other value. The rendered
-compose files, the Engine API create bodies, the search's settings and the stored records are byte-equal to 1.30.3 for
-32 agent shapes but for that line (`scripts/compose_equivalence.py`), and the page is unchanged (the snapshot,
-`differing 0`). `test_the_keeper_names_no_service` keeps the keeper's generic code free of any service's name.
+Issue 72, item 1, stage 4 (host steps): a capability's steps on the computer are declared once, in its manifest's
+`host_verbs:` block (its script in the capability's `host/` folder, the files the Linux installer ships, and for each
+verb its script command, the arguments it takes from the keeper's records, its time limit, the notice it gives the
+agent's chat, the record its run is kept as, and the keeper's own runner or guard for it), read strictly by
+`capabilities/host_verbs.py` and listed by `capabilities.host_verbs()`. `HOST_VERBS`, the helper's `COMMANDS`,
+`TIME_LIMIT` and per-verb argument branches, `host_steps.CHANGING`, the status-verb loop, `catalogue.STATUS_VERB`,
+`build_installers.HOST_FILES` and its modes, and `publish.yml`'s list of executables are drawn from the declarations;
+a platform check reads the capability's own (`capabilities.platforms_of`), not `"linux"`. `gpu.sh` moved to
+`app/capabilities/ollama/host/`. The scripts' shared shell helpers (`say`, `hint`, `die`, `refuse`, `part`,
+`part_done`, `act`, `root_alone`, `put_record`) are one file, `app/capabilities/host-common.sh`: the host helper puts it
+before the script on standard input, the Linux zip ships it beside `phone-line.sh`, and a script run from the repo
+reads it from there; a helper whose image lacks either file ends at once with code 127 instead of running an empty
+script. Every verb's arguments for 4,212 records, its time limit and its notice are equal to 1.30.4's, the
+rendered compose files are byte-equal (`scripts/compose_equivalence.py`), and the page is unchanged (the snapshot,
+`differing 0`). `test_the_keeper_names_no_host_verb` keeps the keeper's generic code free of any verb, script or
+platform.
 
 Windows and macOS: not tested yet.

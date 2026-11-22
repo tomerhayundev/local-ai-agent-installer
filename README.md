@@ -85,7 +85,8 @@ step, with the same steps as the agent's page ("להוסיף בבת אחת"):
 To give the phone to an agent you already have, install **שיחות טלפון** on its page: it does the same steps, and
 "הוספת טלפון חדש" there pairs another phone to the same line (each agent picks which phone it calls from, on its own
 page). `phone-line.sh` (next to
-`install-agent.sh`, with `phone-line-pair.py` and `phone-line.apparmor`) also runs by hand: `sudo bash phone-line.sh
+`install-agent.sh`, with `phone-line-pair.py`, `phone-line.apparmor` and `host-common.sh`, the shell helpers it
+reads first) also runs by hand: `sudo bash phone-line.sh
 setup`, `pair`, `check`, `status` (what is done already) and `test-call <your own number>`.
 
 An agent's page makes these changes to the computer, when a capability it installs needs them: the keeper
