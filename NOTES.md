@@ -1,26 +1,27 @@
 ### לבעלים
 
-- שינוי פנימי, בלי שינוי בדף: כל שירות קול של קו הטלפון מתואר עכשיו במקום אחד משלו.
-- השיחות עובדות כמו קודם, עם אותם שירותי קול ואותם קולות.
+- שינוי פנימי, בלי שינוי בדף: מה ששונה בין השירותים שהמודלים באים מהם מתואר עכשיו בהגדרות של כל שירות.
+- השירותים, המודלים, החשיבה והתגים של המחיר עובדים כמו קודם.
 
 ### Technical
 
-Issue 72, item 5, stage 2: the phone line's voice providers are declarations. ElevenLabs and xAI are each
-`phone_line/voices/<name>.yaml` beside its session's module (moved from `phone_line/voice_elevenlabs.py` and
-`voice_xai.py`): its label, key link, default voice, session (`module:attr`), the options its session is handed with
-their `line.env` names and defaults (the model names and addresses that were module constants: `MODEL`, `URL`, `API`,
-`TTS_MODEL`, `DEFAULT_LLM`, `ASR_PROVIDERS`, `DEFAULT_ASR_PROVIDER`, `AGENT_NAME`), the line's limits it takes
-(`max_seconds`), its key header, key check (and the answer's flags that refuse a key), voice lists (and xAI's fallback
-voices) and gender lookup. `manifests.providers("voice")` parses them; `manifests.hook` resolves every kind's code (it
-moved from `channels/`). `voice.py`'s `make_voice`, `check_key`, `list_voices` and `find_voice_gender` are one body each
-over the record (`DEFAULT_VOICE`, `XAI_VOICES` and the if/elif blocks are gone); `LineSettings.voice_options` replaces
-`elevenlabs_llm`, `elevenlabs_asr_provider` and `model`, read generically (a `one_of` option lowercased);
-`brief.PROVIDERS`, `PROVIDER_LABELS`, the line's default provider and voice, `keeper/line.py`'s `DEFAULT_PROVIDER` and the
-page's key links are the records'. `PROVIDER_NAMED`: 20 names in 10 pins over 6 modules (73 in 19 over 12 before): the
-voices' names and hosts are at 0. `test_a_fake_provider_plugs_in_as_a_voice` declares a voice in two files and checks
-its key, lists its voices, reads a gender and makes its session. Recorded requests (URL, the key's header, body) and
-answers of the three calls for 14 cases per provider, each session's opening requests and messages, and the line's
-settings for six `line.env` files match the old code; the page snapshot, with a new two-keys preview state, shows no
-difference. Stage 2 is done only after a real call on the house line.
+Issue 72, item 5, stage 3: what differs between AI services is declared. Each block of `ai_presets.yaml` names its
+ways: `thinking` (levels, always, and the request form, one of `ai_thinking.THINKING_ASKS`: `effort`, `reasoning`),
+`models` (the list reader, one of `ai_lists.LIST_SHAPES`: `ids`, `rich`, `tags`; whether it is public; the query each
+job filter asks; an `ids` list's patterns for chat, thinking and image models), `audio` and `tier`. The agent's own
+Ollama is the ollama capability's (`ai_service:` in its manifest: its tag `ollama_agent`, label, sign-in page,
+`cloud_stubs`), found by `capabilities.added_service`; the preset list stays three. One parser, `ai_ways.parse_ways`
+(a new module both read), and one lookup, `ai_service.ways_of`; `load_presets` is read once per process.
+`ai_thinking.fields`, `offer`, `cloud_offer` and `off_fields` take the ways (`CLOUD` and the preset branches are gone;
+the gate keeps its kind's), `ai_lists` reads every list by its shape (`CHAT_ID`, `REASONING_ID`, `IMAGE_ID`, `FILTERS`
+moved to the YAML), `ai_models.cloud_stub` and `price_tier` take the ways at their nine call sites, and
+`pages/ai/state.LOCAL` and `pages/ollama/state.LOCAL_PRESET` read the capability's declaration. The local Ollama's
+sign-in check reads its declared sign-in page. Gone as dead or one-time: `words/connections.PRESET_HELP`,
+`NEEDS_KEY`, `NO_KEY_NEEDED` (read nowhere) and `convert_old`'s `ollama_local` branch (for agents saved before
+1.7.0). `PROVIDER_NAMED`: 1 name in 1 pin (20 in 10 before), the stated `("model_facts.py", "openai")`: the API kind
+a home server speaks. `test_a_fake_provider_plugs_in_as_an_ai_preset` adds a service as one YAML block. Recorded
+thinking offers and fields for every service and state, list requests and rows for every service and job filter,
+price tags and labels match the old code exactly; the page snapshot, with a new cloud-stub preview state, shows no
+difference.
 
 Windows and macOS: not tested yet.
