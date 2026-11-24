@@ -1,29 +1,26 @@
 ### לבעלים
 
-- שינוי פנימי, בלי שינוי בדף: כל ערוץ צ'אט מתואר עכשיו במקום אחד משלו.
-- וואטסאפ וטלגרם עובדים כמו קודם, באותן מילים.
+- שינוי פנימי, בלי שינוי בדף: כל שירות קול של קו הטלפון מתואר עכשיו במקום אחד משלו.
+- השיחות עובדות כמו קודם, עם אותם שירותי קול ואותם קולות.
 
 ### Technical
 
-Issue 72, item 5, stage 1: the chat channels are declarations, not branches. Each channel is `channels/<name>.yaml`
-beside its module (`whatsapp.yaml` order 10, `telegram.yaml` order 20, and the agents' `link.yaml`, `owner: false`,
-still built by `wiring.py`): its label, its word in the page's lines, its tile, third party, setup (`page` |
-`server`), its own `.env` settings with their defaults and `when:` switches (WhatsApp's `WA_*`, `PRIVACY_CONTACT`,
-`PUBLIC_URL`, `GRAPH_API_VERSION` default v26.0), the agent settings it needs (Telegram's `PAGE_URL`), its check, its
-`build`, and what a removal leaves by hand. `manifests.providers(kind)` (`DECLARED`, `read(folder, layout)`) parses them
-once into frozen records, refusing an unknown field, a YAML without its module, a `when:` that is no switch and every
-other problem at once, naming the file; `channels.hook` only resolves a record's `module:attr`. Each channel is built
-by its `build(ChannelContext)` and takes its facts from its record (`channels.base.Declared`). `settings.py` reads the
-profile's channels' settings generically (`Settings.channel_settings`; WhatsApp's `settings_problems` holds the
-`WA_ALLOWED` checks); `agent_profile.CHANNELS_READY`, `CHANNELS_LATER` and `THIRD_PARTY` are gone (a profile naming
-`signal` or `web` now gets "unknown channel"); `wiring.py` builds the profile's channels in one loop (`Wiring.wa` is
-gone); the page's `CHANNEL_WORDS` and `CHANNEL_NAMES`, the installer's first channel, its closing line and Wi-Fi notes,
-and the removal's `LEFT_BY_HAND` read the records. `ignored` now lists `GRAPH_API_VERSION` when it is set while
-WhatsApp is off. A new guard, `test_generic_code_names_no_provider` (`PROVIDER_NAMED`: identifiers split on `_` and
-CamelCase, strings but docstrings, declared hosts), started at 163 names in 35 pins over 20 modules and is at 73 in 19
-over 12: the channels' names (`whatsapp`, `telegram`, `wa`) are at 0. `test_a_fake_provider_plugs_in` declares,
-builds and draws a channel from its own two files only. `NAMED`: 215 names in 56 files (216 before). Recorded
-`settings.load`, profile and installer outputs match the old code but for the two lines named above, and the page
-snapshot shows no difference.
+Issue 72, item 5, stage 2: the phone line's voice providers are declarations. ElevenLabs and xAI are each
+`phone_line/voices/<name>.yaml` beside its session's module (moved from `phone_line/voice_elevenlabs.py` and
+`voice_xai.py`): its label, key link, default voice, session (`module:attr`), the options its session is handed with
+their `line.env` names and defaults (the model names and addresses that were module constants: `MODEL`, `URL`, `API`,
+`TTS_MODEL`, `DEFAULT_LLM`, `ASR_PROVIDERS`, `DEFAULT_ASR_PROVIDER`, `AGENT_NAME`), the line's limits it takes
+(`max_seconds`), its key header, key check (and the answer's flags that refuse a key), voice lists (and xAI's fallback
+voices) and gender lookup. `manifests.providers("voice")` parses them; `manifests.hook` resolves every kind's code (it
+moved from `channels/`). `voice.py`'s `make_voice`, `check_key`, `list_voices` and `find_voice_gender` are one body each
+over the record (`DEFAULT_VOICE`, `XAI_VOICES` and the if/elif blocks are gone); `LineSettings.voice_options` replaces
+`elevenlabs_llm`, `elevenlabs_asr_provider` and `model`, read generically (a `one_of` option lowercased);
+`brief.PROVIDERS`, `PROVIDER_LABELS`, the line's default provider and voice, `keeper/line.py`'s `DEFAULT_PROVIDER` and the
+page's key links are the records'. `PROVIDER_NAMED`: 20 names in 10 pins over 6 modules (73 in 19 over 12 before): the
+voices' names and hosts are at 0. `test_a_fake_provider_plugs_in_as_a_voice` declares a voice in two files and checks
+its key, lists its voices, reads a gender and makes its session. Recorded requests (URL, the key's header, body) and
+answers of the three calls for 14 cases per provider, each session's opening requests and messages, and the line's
+settings for six `line.env` files match the old code; the page snapshot, with a new two-keys preview state, shows no
+difference. Stage 2 is done only after a real call on the house line.
 
 Windows and macOS: not tested yet.
