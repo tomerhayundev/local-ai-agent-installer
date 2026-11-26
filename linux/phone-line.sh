@@ -165,12 +165,19 @@ apparmor_install() {
     fi
 }
 
-# The two files setup writes from here: WirePlumber's drop-in, and the D-Bus policy for the line's user.
+# The two files setup writes from here: WirePlumber's drop-in, and the D-Bus policy for the line's user. WirePlumber
+# 0.5 keeps its Bluetooth monitor off on a computer with no local seat (a server): the drop-in turns seat monitoring
+# off, or the phone never becomes an audio device and every call ends without audio.
 wireplumber_conf() {
     cat <<'EOF'
 monitor.bluez.properties = {
   bluez5.hfphsp-backend = "ofono"
   bluez5.roles = [ hfp_hf ]
+}
+wireplumber.profiles = {
+  main = {
+    monitor.bluez.seat-monitoring = disabled
+  }
 }
 EOF
 }
@@ -478,6 +485,7 @@ status() {
     [ "$(loginctl show-user "$TARGET_USER" -p Linger --value 2>/dev/null)" = yes ] || ready=no
     [ -S "/run/user/$TARGET_UID/pipewire-0" ] || ready=no
     grep -qF 'bluez5.hfphsp-backend = "ofono"' "$TARGET_HOME/.config/wireplumber/wireplumber.conf.d/51-phone-line.conf" 2>/dev/null || ready=no
+    grep -qF 'monitor.bluez.seat-monitoring = disabled' "$TARGET_HOME/.config/wireplumber/wireplumber.conf.d/51-phone-line.conf" 2>/dev/null || ready=no
     grep -qF "<policy user=\"$TARGET_USER\">" /etc/dbus-1/system.d/ofono-phone-line.conf 2>/dev/null || ready=no
     [ "$(cat "$OFONO_DROPIN_DIR/phone-line.conf" 2>/dev/null)" = "$OFONO_DROPIN" ] || ready=no
     if apparmor_on; then
